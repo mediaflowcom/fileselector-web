@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <link rel="icon" href="https://mfstatic.com/ui/icons/favicon.svg" type="image/svg+xml">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title>Fileselector Test</title>
+
+  <link href="https://mfstatic.com/css/sourcesanspro.min.css" rel="stylesheet">
+  <script src="https://mfstatic.com/js/mediaflowplayer.min.js"></script>
+  <link rel="stylesheet" href="https://mfstatic.com/css/mediaflowplayer.min.css">
+  <link rel="stylesheet" href="css/fileselector.css" id="mf_fileselector_css">
+  <style>
+    body {
+      font-family: sans-serif;
+      font-size: .875rem;
+      color: #333;
+    }
+
+    #fileSelectorDiv{
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+
+      #previewFile img{
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+        display: block;
+      }
+    }
+
+    #settingsDiv {
+      div,
+      input,
+      select {
+        padding: 2px;
+        font-family: inherit;
+        font-size: inherit;
+      }
+
+      select {
+        min-width: 35ch;
+      }
+
+      iframe {
+        border: solid #4698cb 2px;
+        border-style: solid;
+      }
+
+      label {
+        width: 18ch;
+        display: inline-block;
+        text-align: right;
+      }
+
+      input[type="text"] {
+        width: 34ch;
+
+        &[readonly] {
+          border: 0;
+        }
+      }
+
+      img {
+        max-width: 100%;
+      }
+
+      #refreshToken[value^='No'] {
+       color: crimson;
+      }
+    }
+
+    button#browsebtn,
+    button#btnRefreshToken_change {
+      background-color: #307CAB;
+      border: 0;
+      border-radius: 4px;
+      padding: 4px 8px;
+      color: white;
+
+      &#btnRefreshToken_change {
+        margin-left: 2rem;
+      }
+
+      &:hover {
+        background-color: #225677;
+      }
+    }
+
+    @media (width < 600px) {
+      #test1{
+        width: 100% !important;
+      }      
+    }
+  </style>
+</head>
+
+<body>
+  <div id="settingsDiv" class="light">
+    <div>
+      <label>Active Refresh Token: </label>
+      <input type="text" readonly id="refreshToken" value="No refresh token selected">
+      <button id="btnRefreshToken_change">Change Refresh Token</button>
+    </div>
+    <div>
+      <label>Client Id:</label>
+      <input type="text" id="client_id">
+    </div>
+    <div>
+      <label>Client Secret:</label>
+      <input type="text" id="client_secret">
+    </div>
+    <div>
+      <label>API:</label>
+      <select id="domain">
+        <option value="-1">-- Choose domain --</option>
+        <option value="mediaflow.com">api.mediaflow.com</option>
+        <option value="mediaflow.tech">api.mediaflow.tech</option>
+      </select>
+    </div>
+    <div>
+      <label>Language:</label>
+      <select id="lang">
+        <option value="sv_SE">Swedish</option>
+        <option value="nb_NO">Norwegian</option>
+        <option value="en_US">English</option>
+        <option value="fi_FI">Finnish</option>
+      </select>
+    </div>
+    <div>
+      <label>Preset:</label>
+      <select id="preset">
+        <option value="minimum">Minimum (uses FS:s internal default values)</option>
+        <option value="minimumPreview">Minimum (with file preview)</option>
+      </select>
+      <div>
+        <label>&nbsp;</label><span style="font-size: .75rem">Select a preset to get predefined settings for the File
+          Selector</span>
+      </div>
+    </div>
+  </div>
+  <div id="fileSelectorDiv" style="display: none;">
+    <h1>Choose image or video</h1><button id="browsebtn" onclick="showFileSelector();">Browse...</button>
+    <div class="light" id="test1"
+      style="display: none; height: calc(100vh - 90px); width: 65vw; position:relative; box-shadow: 5px 5px 8px 0px black; border-radius: 4px; margin-left: auto; margin-right: auto;">
+    </div>
+    <div class="dark" id="previewFile"
+      style="position:relative;width:800px;height:450px;overflow:hidden;border:1px solid black;margin:10px;"></div>
+  </div>
+
+  <script type="module">
+    import { bareMinimumSettings, bareMinimumSettingsWithPreview } from './bareMinimum.js';
+    
+    const loadCredentials = async () => {
+      try {
+        const { credentials } = await import('./env.js');
+        return credentials;
+      } catch (error) {
+        return null;
+      }
+    };
+    const credentials = await loadCredentials();
+
+    var player = null;
+    var myFileSelector = null;
+    let selectedFile = localStorage.getItem('selectedFile');
+    let clientId = (credentials?.CLIENT_ID ?? null) ?? localStorage.getItem('client_id');
+    let clientSecret = (credentials?.CLIENT_SECRET ?? null) ?? localStorage.getItem('client_secret');
+    let refreshToken = (credentials?.REFRESH_TOKEN ?? null) ?? localStorage.getItem('refreshToken');
+    let domain = (credentials?.DOMAIN ?? null) ?? localStorage.getItem('domain');
+
+    function showFileSelector() {
+      document.getElementById('fileSelectorDiv').style.display = '';
+      document.getElementById('settingsDiv').style.display = 'none';
+      document.getElementById('test1').style.display = 'block';
+      document.getElementById('previewFile').style.display = 'none';
+      document.getElementById('browsebtn').style.display = 'none';
+      var lang = document.getElementById('lang').value;
+      var apiBase = 'https://api.' + document.getElementById('domain').value + '/1';
+      let preset = document.getElementById("preset").value;
+
+      // Testing set-up examples
+      let currentFsSettings = {};
+      switch (preset) {
+        case "minimum":
+          currentFsSettings = { ...bareMinimumSettings }
+          break;
+        case "minimumPreview":
+          currentFsSettings = { ...bareMinimumSettingsWithPreview }
+          break;
+        default:
+          currentFsSettings = { ...bareMinimumSettings }
+          break;
+      }
+
+      currentFsSettings = { ...currentFsSettings, locale: lang, client_id: clientId, client_secret: clientSecret, refresh_token: refreshToken, apiBase: apiBase }
+
+      myFileSelector = new FileSelector("test1", {...currentFsSettings });
+    }
+
+    window.showFileSelector = showFileSelector;
+    window.myFileSelector = myFileSelector;
+
+    function clickDone() {
+      myFileSelector.clickDone();
+    }
+
+    if (clientId) {
+      document.getElementById('client_id').value = clientId;
+      localStorage.setItem('client_id', clientId);
+    }
+    if (clientSecret) {
+      document.getElementById('client_secret').value = clientSecret;
+      localStorage.setItem('client_secret', clientSecret);
+    }
+    if (refreshToken) {
+      document.getElementById('refreshToken').value = refreshToken;
+      localStorage.setItem('refreshToken', refreshToken);
+      document.getElementById('refreshToken').setAttribute('value', refreshToken);
+    }
+
+    if (domain) {
+      document.getElementById('domain').value = domain;
+      localStorage.setItem('domain', domain);
+    } 
+
+    if (selectedFile != null) {
+      selectedFile = JSON.parse(selectedFile);
+      if (selectedFile.basetype === 'video') {
+        if (selectedFile.embedMethod === 'javascript') {
+          if (player && typeof player.destroy == 'function') {
+            player.destroy();
+          }
+          const playerOptions = {
+            displayLanguage: 'sv',
+            env: document.getElementById('domain').value == 'mediaflow.tech' ? 'development' : '',
+            autoPlay: selectedFile.autoPlay,
+            startTime: selectedFile.startTime
+          };
+          player = new MFPlayer('#previewFile', selectedFile.mediaId, playerOptions);
+          console.log('playerOptions', playerOptions);
+        }
+        else {
+          var iframe = document.createElement('iframe');
+          var src = 'https://play.mediaflowpro.com/ovp/1/' + selectedFile.mediaId;
+          if (document.getElementById('domain') == 'mediaflow.tech') {
+            src = 'https://play.mediaflow.tech/ovp/1/' + selectedFile.mediaId;
+          }
+          if (selectedFile.autoPlay)
+            src += '?autoplay=1';
+          if (selectedFile.startTime)
+            src += (src.indexOf('?') > 0 ? '&' : '?') + 'startAt=' + selectedFile.startTime;
+          iframe.src = src;
+          iframe.style.width = '100%';
+          iframe.style.height = '100%';
+          document.getElementById('previewFile').appendChild(iframe);
+        }
+      }
+      else {
+        var img = document.createElement('img');
+        img.src = selectedFile.url;
+        document.getElementById('previewFile').appendChild(img);
+      }
+    }
+    else {
+      selectedFile = undefined;
+    }
+
+    document.getElementById('btnRefreshToken_change').onclick = function () {
+      var newRefreshToken = prompt('Enter Refresh Token');
+      if (newRefreshToken != null) {
+        localStorage.setItem('refreshToken', newRefreshToken);
+        location.reload();
+      }
+    };
+    
+    document.getElementById('client_id').onchange = function () {
+      const _clientId = document.getElementById('client_id');
+      clientId = _clientId.value;
+      localStorage.setItem('client_id', _clientId.value);
+    };
+
+    document.getElementById('client_secret').onchange = function () {
+      const _clientSecret = document.getElementById('client_secret');
+      clientSecret = _clientSecret.value;
+      localStorage.setItem('client_secret', _clientSecret.value);
+    };
+    
+    document.getElementById('domain').onchange = function () {
+      const _domain = document.getElementById('domain');
+      
+      if(_domain.value === "-1"){
+        _domain.value = domain; // reset
+        return;
+      }
+
+      domain = _domain.value;
+      localStorage.setItem('domain', _domain.value);
+
+      const _clientId = document.getElementById('client_id');
+      const _clientSecret = document.getElementById('client_secret');
+      const _refreshToken = document.getElementById('refreshToken');
+
+      if (_domain.value == 'mediaflow.com') {
+        _clientId.value = credentials?.CLIENT_ID ?? "";
+        _clientSecret.value = credentials?.CLIENT_SECRET ?? "";
+
+        clientId = _clientId.value;
+        clientSecret = _clientSecret.value;
+        
+        localStorage.setItem('client_id', _clientId.value);
+        localStorage.setItem('client_secret', _clientSecret.value);
+        
+        if(credentials?.REFRESH_TOKEN){
+          _refreshToken.value = credentials?.REFRESH_TOKEN;
+          refreshToken = _refreshToken.value
+          localStorage.setItem('refreshToken', _refreshToken.value);
+        }
+      }
+      else {
+        _clientId.value = credentials?.CLIENT_ID ?? "";
+        _clientSecret.value = credentials?.CLIENT_SECRET ?? "";
+
+        clientId = _clientId.value;
+        clientSecret = _clientSecret.value;
+        
+        localStorage.setItem('client_id', _clientId.value);
+        localStorage.setItem('client_secret', _clientSecret.value);
+        
+        if(credentials?.REFRESH_TOKEN){
+          _refreshToken.value = credentials?.REFRESH_TOKEN;
+          refreshToken = _refreshToken.value
+          localStorage.setItem('refreshToken', _refreshToken.value);
+        }
+      }      
+    };
+
+    // show file selector?
+    if (document.getElementById('client_id').value.length > 0 &&
+      document.getElementById('client_secret').value.length > 0 &&
+      (document.getElementById('refreshToken').value.length > 0 && document.getElementById('refreshToken').value.indexOf("No ") !== 0)) {
+      document.getElementById('fileSelectorDiv').style.display = 'block';
+    }
+    else{
+      document.getElementById('fileSelectorDiv').style.display = 'none';
+    }
+  </script>
+</body>
+
+</html>
