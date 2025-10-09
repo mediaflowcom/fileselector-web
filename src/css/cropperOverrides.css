@@ -1,0 +1,127 @@
+.mf-cropper-box .cropper-crop-box{
+    z-index: 1;
+}
+
+.mf-cropper-box .cropper-face{
+    background-color: transparent;
+}
+
+.mf-cropper-box .cropper-modal {
+    background-color: #000;
+    opacity: .65
+}
+
+.mf-cropper-box .cropper-view-box {
+    display: block;
+    height: 100%;
+    outline: 0;
+    overflow: hidden;
+    width: 100%
+}
+
+.mf-cropper-box .cropper-line{
+    display: block;
+    height: 100%;
+    opacity: 1;
+    position: absolute;
+    width: 100%;
+    background-color: #3399ff;
+}
+
+.mf-cropper-box .cropper-line.line-e {
+    cursor: ew-resize;
+    right: -2px;
+    top: 0;
+    width: 2px
+}
+
+.mf-cropper-box .cropper-line.line-n {
+    cursor: ns-resize;
+    height: 2px;
+    left: 0;
+    top: -2px
+}
+
+.mf-cropper-box .cropper-line.line-w {
+    cursor: ew-resize;
+    left: -2px;
+    top: 0;
+    width: 2px
+}
+
+.mf-cropper-box .cropper-line.line-s {
+    bottom: -2px;
+    cursor: ns-resize;
+    height: 2px;
+    left: 0
+}
+
+.mf-cropper-box .cropper-point {
+    background-color: #3399ff;
+    height: 6px;
+    opacity: 1;
+    width: 6px
+}
+
+.mf-cropper-box .cropper-point.point-e {
+    cursor: ew-resize;
+    margin-top: -3px;
+    right: -4px;
+    top: 50%
+}
+
+.mf-cropper-box .cropper-point.point-n {
+    cursor: ns-resize;
+    left: 50%;
+    margin-left: -3px;
+    top: -4px
+}
+
+.mf-cropper-box .cropper-point.point-w {
+    cursor: ew-resize;
+    left: -4px;
+    margin-top: -3px;
+    top: 50%;
+}
+
+.mf-cropper-box .cropper-point.point-s {
+    bottom: -4px;
+    cursor: s-resize;
+    left: 50%;
+    margin-left: -3px;
+}
+
+.mf-cropper-box .cropper-point.point-ne {
+    cursor: nesw-resize;
+    right: -4px;
+    top: -4px
+}
+
+.mf-cropper-box .cropper-point.point-nw {
+    cursor: nwse-resize;
+    left: -4px;
+    top: -4px;
+}
+
+.mf-cropper-box .cropper-point.point-sw {
+    cursor: nesw-resize;
+    bottom: -4px;
+    left: -4px;
+}
+
+.mf-cropper-box .cropper-point.point-se {
+    bottom: -4px;
+    right: -4px;
+    cursor: nwse-resize;
+    height: 20px;
+    opacity: 1;
+    width: 20px;
+}
+
+@media (min-width:1200px) {
+    .mf-cropper-box .cropper-point.point-se {
+        height: 6px;
+        opacity: 1;
+        width: 6px
+    }
+}
