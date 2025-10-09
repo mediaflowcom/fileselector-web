@@ -10,7 +10,7 @@
   },
   "keywords": [],
   "author": "Mediaflow Europe AB",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "cropperjs": "^1.5.6"
   },
