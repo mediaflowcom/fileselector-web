@@ -1,0 +1,192 @@
+.mf_fileinfoArea .mf-file-info-wrapper{
+    overflow: auto;
+    max-height: calc(100% - 220px);
+}
+
+.mf_fileinfoArea:not(:has(.mf-preview-box.mf-file-video)) .mf-file-info-wrapper{
+    max-height: calc(100% - 200px);
+}
+
+.mf-fileinfo,
+.mf-fileusage {
+    padding: 10px;
+    padding-top: 20px;
+    word-break: break-word;
+}
+
+.mf-fileinfo,
+.mf-fileusage .mf-fileusage-wrapper {
+    display: grid;
+    grid-template-columns: 40% 60%;
+    gap: 5px;
+}
+
+.mf-fileinfo.hidden,
+.mf-fileusage.hidden {
+    display: none;
+}
+
+.mf-fileinfo>label,
+.mf-fileusage .mf-fileusage-wrapper>label {
+    font-size: .825rem;
+    font-weight: 600;
+    word-break: break-word;
+}
+
+.mf-fileinfo>div,
+.mf-fileusage .mf-fileusage-wrapper>div {
+    font-size: .825rem;
+}
+
+.mf-fileinfo .mf-mark .mf-mark-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.mf-fileinfo .mf-mark {
+    width: 10px;
+    height: 10px;
+    display: inline-block;
+}
+
+.mf-fileinfo .mf-mark .mf-mark-name {
+    padding-left: 10px;
+}
+
+.mf-fileinfo .devider,
+.mf-fileusage .mf-fileusage-wrapper .devider {
+    grid-column: 1/3;
+    height: 1px;
+    background-color: var(--mf-fs-border);
+    margin: 10px 0;
+}
+
+.mf-fileinfo .instructions {
+    grid-column: 1/3;
+}
+
+.mf-fileinfo .mf-license-cc-type {
+    white-space: pre-line;
+}
+
+.mf-fileusage .mf-fileusage-wrapper .full-width {
+    grid-column: 1/3;
+    opacity: 50%;
+}
+
+.mf-fileinfo .mf-warning,
+.mf-fileinfo .mf-alert {
+    grid-column: 1/3;
+    display: flex;
+    gap: 5px;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 5px;
+    font-weight: 600;
+    font-size: .825rem;
+}
+
+.mf-fileinfo .mf-warning svg,
+.mf-fileinfo .mf-alert svg{
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+
+.mf-fileinfo .mf-warning {
+    background-color: var(--mf-fs-warning-bg-color);
+    border: 1px solid var(--mf-fs-warning-border-color);
+    color: var(--mf-fs-warning-color);
+}
+
+
+.mf-fileinfo .mf-alert {
+    background-color: var(--mf-fs-alert-bg-color);
+    border: 1px solid var(--mf-fs-alert-border-color);
+    color: var(--mf-fs-alert-color);
+}
+
+.mf-fileinfo .mf-file-rating{
+    display: flex;
+    column-gap: 4px;
+}
+.mf-fileinfo .mf-file-rating > span{
+    width: 1em;
+    height: 1em;
+}
+.light .mf-fileinfo .mf-file-rating > span::before
+{
+    content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23333840' class='bi bi-star' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.256c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.441.062-.612.636-.283.95l3.523 3.356-.83 4.73zm4.905-2.767-3.686 1.894.694-3.957a.565.565 0 0 0-.163-.505L1.71 6.745l4.052-.576a.525.525 0 0 0 .393-.288L8 2.223l1.847 3.658a.525.525 0 0 0 .393.288l4.052.575-2.906 2.77a.565.565 0 0 0-.163.506l.694 3.957-3.686-1.894a.503.503 0 0 0-.461 0z'/%3E%3C/svg%3E");
+}
+.light .mf-fileinfo .mf-file-rating > span.mf-selected::before {
+    content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23333840' class='bi bi-star' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z'/%3E%3C/svg%3E");
+}
+.mf-fileinfo .mf-file-rating > span::before
+{
+    content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23FFFFFF' class='bi bi-star' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.256c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.441.062-.612.636-.283.95l3.523 3.356-.83 4.73zm4.905-2.767-3.686 1.894.694-3.957a.565.565 0 0 0-.163-.505L1.71 6.745l4.052-.576a.525.525 0 0 0 .393-.288L8 2.223l1.847 3.658a.525.525 0 0 0 .393.288l4.052.575-2.906 2.77a.565.565 0 0 0-.163.506l.694 3.957-3.686-1.894a.503.503 0 0 0-.461 0z'/%3E%3C/svg%3E");
+}
+.mf-fileinfo .mf-file-rating > span.mf-selected::before {
+    content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23FFFFFF' class='bi bi-star' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z'/%3E%3C/svg%3E");
+}
+
+.mf-fileusage a {
+    color: #428bca;
+    word-break: break-word;
+}
+
+/* The grid in different scenarious */
+.mf_fileviewArea .mf-files-box {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-auto-rows: max-content;
+    gap: 10px;
+}
+
+.mf_fileviewArea .mf-files-box.smallicons {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+}
+
+.mf_container_small .mf_fileviewArea .mf-files-box {
+    grid-template-columns: repeat(auto-fill, minmax(125px, 1fr));
+    gap: 10px;
+}
+
+.mf_container_small .mf_fileviewArea .mf-files-box.smallicons {
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+}
+
+.mf_fileviewArea .mf-files-box.list-view {
+    display: block;
+
+    .mf-row .mf-col:nth-child(n+2){
+        text-align: center;
+    }
+    .mf-row .mf-col:not(:last-child){
+        margin-right: 1em;
+    }
+}
+/*end*/
+
+/* The file style in different scenarios */
+.mf_fileviewArea .mf-files-box .mf-file .mf-img {
+    aspect-ratio: 1/1;
+    background-size: contain;
+    /* border-radius: 5px 5px 0 0; */
+    cursor: pointer;
+}
+
+.mf_fileviewArea .mf-files-box.smallicons .mf-file .mf-img {
+    background-size: contain;
+    cursor: pointer;
+}
+/*end*/
+
+.mf_fileviewArea .mf-files-box .mf-file .mf-lbl {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+    width: 100%;
+    height: 20px;
+}
