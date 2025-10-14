@@ -421,6 +421,7 @@ export default {
         aspectRatio: aspectRatio,
         autoCropArea: 1,
         zoomable: false,
+        movable: false,
         crop: function(event) {
           // Fix for when event.detail.height and/or event.detail.width = Infinity | NaN
           if((event.detail.width === Infinity || event.detail.height === Infinity) ||
