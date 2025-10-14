@@ -647,14 +647,12 @@ export default {
 
           // NOTE: It does NOT work to set left and top at the same time as width and height to get this to work. Do not know why.
           if (canvasHeightWidthRatio > formatHeightWidthRation) {
-            //const ratio = formatWidthHeightRation >= 1 ? (canvasHeightWidthRatio / formatHeightWidthRation) : (formatHeightWidthRation / canvasHeightWidthRatio);
             const ratio = (formatHeightWidthRation / canvasHeightWidthRatio);
-            me.cropper.setCropBoxData({ /*left: cropBoxLeft, top: cropBoxTop,*/ width: canvasData.width, height: canvasData.height * ratio });
+            me.cropper.setCropBoxData({ width: canvasData.width, height: canvasData.height * ratio });
           }
           else if (canvasWidthHeightRatio > formatWidthHeightRation) {
-            //const ratio = formatWidthHeightRation >= 1 ? (canvasWidthHeightRatio / formatWidthHeightRation) : (formatWidthHeightRation / canvasWidthHeightRatio);
             const ratio = (formatWidthHeightRation / canvasWidthHeightRatio);
-            me.cropper.setCropBoxData({ /*left: cropBoxLeft, top: cropBoxTop,*/ width: canvasData.width * ratio, height: canvasData.height });
+            me.cropper.setCropBoxData({ width: canvasData.width * ratio, height: canvasData.height });
           }
 
           // Adjust cprop box position
@@ -675,7 +673,7 @@ export default {
         me.lastEntered.h = me.file.height; // set height to original image height
         var canvasData = me.cropper.getCanvasData();
         me.cropper.setAspectRatio(me.file.width / me.file.height);
-        me.cropper.setCropBoxData({ /*top: 0, left: 0,*/ width: canvasData.width, height: canvasData.height });
+        me.cropper.setCropBoxData({ width: canvasData.width, height: canvasData.height });
       }
     }
   },
