@@ -262,7 +262,7 @@ export default {
       fileInfoData += `<label>${me.lang.translate('FILE_VIEW_MARKING')}</label>
       <div class="mf-mark-wrapper">
         <span class="${className}"></span>
-        <span class="mf-mark-name">${markName}</span>
+        <span class="mf-mark-name">${_this.escapeHtml(markName)}</span>
       </div>`;
     } 
 
