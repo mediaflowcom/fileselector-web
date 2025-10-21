@@ -616,13 +616,13 @@ export default {
           this.nextSibling.click();
         }, false);
       }
-      smallPreviews.innerText = 'små';
+      smallPreviews.innerText = this.me.lang.translate('FILE_VIEW_SMALLIMAGES');
       sizeSelector.appendChild(smallPreviewsIcon);
       sizeSelector.appendChild(smallPreviews);
       var largePreviews = document.createElement('span');
       var largePreviewsIcon = document.createElement('span');
 
-      largePreviews.innerText = 'stora';
+      largePreviews.innerText = this.me.lang.translate('FILE_VIEW_LARGEIMAGES');
       if (me.previewSize === 1) {
         largePreviews.className = 'mf-previewSize mf-selected';
         largePreviewsIcon.className = 'mf-largeicons mf-selected';
@@ -675,7 +675,7 @@ export default {
           this.nextSibling.click();
         }, false);
       }
-      noPreviews.innerText = 'lista';
+      noPreviews.innerText = this.me.lang.translate('FILE_VIEW_LISTVIEW');
       sizeSelector.appendChild(noPreviewsIcon);
       sizeSelector.appendChild(noPreviews);
 
