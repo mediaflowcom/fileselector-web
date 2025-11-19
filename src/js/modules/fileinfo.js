@@ -102,6 +102,7 @@ export default {
       /* tabs */
       var tabInfo = document.createElement('button');
       tabInfo.className = 'mf-tab active';
+      tabinfo.type = 'button'; // Prevents form submits in integrations
       tabInfo.innerText = me.lang.translate('FILE_INFO_TAB');
       tabInfo.onclick = function() {
         var tabActive = document.querySelector('.mf-tabs-container .mf-tab.active');
@@ -117,6 +118,7 @@ export default {
 
       var tabUsage = document.createElement('button');
       tabUsage.className = 'mf-tab';
+      tabUsage.type = 'button'; // Prevents form submits in integrations
       tabUsage.innerText = me.lang.translate('FILEUSAGE_TAB');
       tabUsage.onclick = function() {
         var tabActive = document.querySelector('.mf-tabs-container .mf-tab.active');
