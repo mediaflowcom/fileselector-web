@@ -486,22 +486,28 @@ export default class FileSelector {
 		me.item.dataset.activeView = "folders";
 		
 		var button1 = document.createElement('button');
+		button1.type = 'button';
 		button1.innerText = me.lang.translate('FOLDERS');
-		button1.onclick = function(){
+		button1.onclick = function(e){
+			e.preventDefault();
 			me.item.dataset.activeView = "folders";
 		};
 		me.responsiveMenu.appendChild(button1);
 
 		var button2 = document.createElement('button');
+		button2.type = 'button';
 		button2.innerText = me.lang.translate('FILES');
-		button2.onclick = function(){
+		button2.onclick = function(e){
+			e.preventDefault();
 			me.item.dataset.activeView = "files";
 		};
 		me.responsiveMenu.appendChild(button2);
 
 		var button3 = document.createElement('button');
+		button3.type = 'button';
 		button3.innerText = me.lang.translate('FILE_INFO');
-		button3.onclick = function(){
+		button3.onclick = function(e){
+			e.preventDefault();
 			me.item.dataset.activeView = "file";
 		};
 		me.responsiveMenu.appendChild(button3);
