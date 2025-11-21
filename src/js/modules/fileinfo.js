@@ -101,9 +101,11 @@ export default {
       tabsContainer.className = 'mf-tabs-container';
       /* tabs */
       var tabInfo = document.createElement('button');
+      tabInfo.type = 'button';
       tabInfo.className = 'mf-tab active';
       tabInfo.innerText = me.lang.translate('FILE_INFO_TAB');
-      tabInfo.onclick = function() {
+      tabInfo.onclick = function(e) {
+        e.preventDefault();
         var tabActive = document.querySelector('.mf-tabs-container .mf-tab.active');
         if(tabActive) {
           tabActive.classList.remove('active');
@@ -116,9 +118,11 @@ export default {
       tabsContainer.appendChild(tabInfo);
 
       var tabUsage = document.createElement('button');
+      tabUsage.type = 'button';
       tabUsage.className = 'mf-tab';
       tabUsage.innerText = me.lang.translate('FILEUSAGE_TAB');
-      tabUsage.onclick = function() {
+      tabUsage.onclick = function(e) {
+        e.preventDefault();
         var tabActive = document.querySelector('.mf-tabs-container .mf-tab.active');
         if(tabActive) {
           tabActive.classList.remove('active');
