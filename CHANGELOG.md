@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # 2.3.1 UNRELEASED
 ### Fixed
 
-- Fixed bug where the tab buttons could have unintentional behavior due to not
+- Fixed bug where some buttons could have unintentional behavior due to not
   preventing the default behavior of the buttons.
 
 # 2.3.0 2025-10-20
