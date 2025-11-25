@@ -907,7 +907,7 @@ export default {
     });
   },
   validateURL: function(inputElement) {
-    const regex = /^(?:$|https?:\/\/[-\w@:%._\+~#=]{1,256}(?:\.[a-zA-Z0-9()]{2,6})?(?:\/[-\w@:%_\+.~#?&\/=]*)?)$/;
+    const regex = /^(?:$|https?:\/\/[-\w@:%._\+~#=]{1,256}(?:\.[a-zA-Z0-9()]{2,6})?(?:\/[-\w@:%_+.~#?&\/=;]*)?)$/;
     const urlToBeTested = inputElement.value.trim();
     if(regex.test(urlToBeTested) === false) {
       inputElement.setCustomValidity('Invalid input!');
