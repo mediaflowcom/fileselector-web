@@ -907,12 +907,23 @@ export default {
     });
   },
   validateURL: function(inputElement) {
-    const regex = /^(?:$|https?:\/\/[-\w@:%._\+~#=]{1,256}(?:\.[a-zA-Z0-9()]{2,6})?(?:\/[-\w@:%_+.~#?&\/=;]*)?)$/;
-    const urlToBeTested = inputElement.value.trim();
-    if(regex.test(urlToBeTested) === false) {
-      inputElement.setCustomValidity('Invalid input!');
-    }else{ 
+    const urlToBeTested = (inputElement.value || '').trim();
+
+    // allow empty value (no navigation link)
+    if (urlToBeTested === '') {
       inputElement.setCustomValidity('');
+      return;
+    }
+
+    try {
+      const u = new URL(urlToBeTested);
+      if (u.protocol === 'http:' || u.protocol === 'https:') {
+        inputElement.setCustomValidity('');
+      } else {
+        inputElement.setCustomValidity('Invalid input: only http(s) URLs allowed');
+      }
+    } catch (e) {
+      inputElement.setCustomValidity('Invalid input!');
     }
   },
   resetValidateURL: function(inputElement) {
