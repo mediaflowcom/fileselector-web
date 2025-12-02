@@ -4,57 +4,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
-# 2.3.1 2025-11-28
-### Fixed
+# 2.4.0 2025-12-02
+### Added
+- Added German translations and updated German date formatting.
 
+### Fixed
 - Fixed bug where some buttons could have unintentional behavior due to not
   preventing the default behavior of the buttons.
+- Fixed faulty URL validation function.
 
 # 2.3.0 2025-10-20
-### Changed
 
+### Changed
 - New Mediaflow branding.
 
 # 2.2.4 2025-10-14
-### Changed
 
+### Changed
 - Added support for `Keep Ratio` download preset
 
 # 2.2.3 2025-10-08
-### Changed
 
+### Changed
 - Added support these font types: `ttf`, `otf`, `woff`, `woff2`, `eof`
 
 # 2.2.2 2025-10-02
-### Changed
 
+### Changed
 - Added support for configurable rootElement in additional locations
 
 # 2.2.1 2025-08-25
-### Fixed
 
+### Fixed
 - Added checks for `canvasData` and `cropperData` to prevent errors when using File Selector without cropper.
 
 # 2.2.0 2025-08-19
-### Added
 
+### Added
 - Success callback object now includes `canvasWidth`, `canvasHeight`, `cropWidth`, `cropHeight`, and `cropCoordinates` with `x1`, `y1`, `x2`, `y2`.
 
 # 2.1.2 2025-07-04
-### Changed
 
+### Changed
 - Added validation for users/me request.
 
 # 2.1.1 2025-05-26
 
 ### Fixed
-
 - getElementById => querySelector to support rootElement
 
 # 2.1.0 2025-05-19
 
 ### Added
-
 - Support `rootElement` setting to allow specifying a custom root element (instead of document)
 
 # 2.0.1 2025-04-28
@@ -72,7 +73,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # 1.9.0 2025-04-09
 
 ### Added
-
 - Support for 'returnValue'. If you don't want to download the file, just get file info,
   you can specify 'returnValue': 'fileObject'. The default value is 'url'
 
@@ -80,26 +80,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # 1.8.2 2025-04-04
 
 ### Fixed
-
 - Fix for downloadFormat: 'original'
 
 # 1.8.1 2025-04-02
 
 ### Fixed
-
 - Fix for 'downloadFormats' with a format with id = 0
 
 # 1.8.0 2025-03-27
 
 ### Added
-
 - Displaying dimensions for image in right pane
 - New setting "useNavigationLink" - to enable adding an URL to the output data
 - 'type' added to output json object, when clicking on a file  
 Ex. type:'image', type:'video' etc.
 
 ### Fixed
-
 - Updated code to work as wanted when getting embed code from server
 - When using config.downloadFormat: 'original' we got w/h = 0. (Fixed in this version)
 - Some minor css text alignments
@@ -107,7 +103,6 @@ Ex. type:'image', type:'video' etc.
 # 1.7.0 2025-02-26
 
 ### Added
-
 - Support for "svg" files.  
 Note! Setting "permanentURL" must be true
 
