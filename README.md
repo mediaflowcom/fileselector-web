@@ -43,6 +43,3 @@ npm run serve
 ```
 npm run build
 ```
-
-# Release flow
-See documentation in Notion
