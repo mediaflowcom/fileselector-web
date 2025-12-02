@@ -101,9 +101,11 @@ export default {
       tabsContainer.className = 'mf-tabs-container';
       /* tabs */
       var tabInfo = document.createElement('button');
+      tabInfo.type = 'button';
       tabInfo.className = 'mf-tab active';
       tabInfo.innerText = me.lang.translate('FILE_INFO_TAB');
-      tabInfo.onclick = function() {
+      tabInfo.onclick = function(e) {
+        e.preventDefault();
         var tabActive = document.querySelector('.mf-tabs-container .mf-tab.active');
         if(tabActive) {
           tabActive.classList.remove('active');
@@ -116,9 +118,11 @@ export default {
       tabsContainer.appendChild(tabInfo);
 
       var tabUsage = document.createElement('button');
+      tabUsage.type = 'button';
       tabUsage.className = 'mf-tab';
       tabUsage.innerText = me.lang.translate('FILEUSAGE_TAB');
-      tabUsage.onclick = function() {
+      tabUsage.onclick = function(e) {
+        e.preventDefault();
         var tabActive = document.querySelector('.mf-tabs-container .mf-tab.active');
         if(tabActive) {
           tabActive.classList.remove('active');
@@ -160,11 +164,21 @@ export default {
 
     let fileInfoData = "";
 
+    let alertIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-exclamation-diamond" viewBox="0 0 16 16">
+          <path d="M6.95.435c.58-.58 1.52-.58 2.1 0l6.515 6.516c.58.58.58 1.519 0 2.098L9.05 15.565c-.58.58-1.519.58-2.098 0L.435 9.05a1.482 1.482 0 0 1 0-2.098L6.95.435zm1.4.7a.495.495 0 0 0-.7 0L1.134 7.65a.495.495 0 0 0 0 .7l6.516 6.516a.495.495 0 0 0 .7 0l6.516-6.516a.495.495 0 0 0 0-.7L8.35 1.134z"/>
+          <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z"/>
+        </svg>`;
+
+    let warningIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-exclamation-triangle" viewBox="0 0 16 16">
+          <path d="M7.938 2.016A.13.13 0 0 1 8.002 2a.13.13 0 0 1 .063.016.146.146 0 0 1 .054.057l6.857 11.667c.036.06.035.124.002.183a.163.163 0 0 1-.054.06.116.116 0 0 1-.066.017H1.146a.115.115 0 0 1-.066-.017.163.163 0 0 1-.054-.06.176.176 0 0 1 .002-.183L7.884 2.073a.147.147 0 0 1 .054-.057zm1.044-.45a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566z"/>
+          <path d="M7.002 12a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 5.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995z"/>
+        </svg>`;
+
     //#region Warnings
     // Rights
     if (me.file.rights != undefined && me.config.ignorePermissionChecks !== true) {
       if (me.file.rights.rightsType != undefined && me.file.rights.rightsType.toUpperCase() === 'NO') {
-        fileInfoData += `<div class="mf-alert">${me.lang.translate('FILE_INFO_NO_RIGHTS')}</div>`;
+        fileInfoData += `<div class="mf-alert">${alertIcon}${me.lang.translate('FILE_INFO_NO_RIGHTS')}</div>`;
         canDownload = false;
       }
     }
@@ -172,32 +186,32 @@ export default {
     if (me.file.gdprStatus != undefined && me.config.ignorePermissionChecks !== true) {
       var s = me.file.gdprStatus.toUpperCase();
       if (s == 'MISSING_CONSENT' || s == 'INVALID_CONSENT' || s == 'AWAIT_CONSENT') {
-        fileInfoData += `<div class="mf-alert">${me.lang.translate('FILE_VIEW_GDPR_WARNING')}</div>`;
+        fileInfoData += `<div class="mf-alert">${alertIcon}${me.lang.translate('FILE_VIEW_GDPR_WARNING')}</div>`;
         canDownload = false;
       }
     }
     if (me.file.gdprType != undefined) {
       var s = me.file.gdprType.toUpperCase();
       if (s == 'UNKNOWN') {
-        fileInfoData += `<div class="mf-alert">${me.lang.translate('FILE_VIEW_GDPR_NOT_ASSIGNED')}</div>`;
+        fileInfoData += `<div class="mf-alert">${alertIcon}${me.lang.translate('FILE_VIEW_GDPR_NOT_ASSIGNED')}</div>`;
       }
     }
     // Permissions
     if (me.file.permissions.allowDownload == false && me.config.ignorePermissionChecks !== true) {
       if (me.file.permissions.allowDownloadReason == 'MARKING_DENIED') {
-        fileInfoData += `<div class="mf-alert">${me.lang.translate('FILE_INFO_DOWNLOAD_NOT_ALLOWED_MARKING')}</div>`;
+        fileInfoData += `<div class="mf-alert">${alertIcon}${me.lang.translate('FILE_INFO_DOWNLOAD_NOT_ALLOWED_MARKING')}</div>`;
       } else if (me.file.permissions.allowDownloadReason == 'LICENCE_RIGHTS') {
         // this is already handled above
       } else if (me.file.permissions.allowDownloadReason == 'FILE_DENIED') {
-        fileInfoData += `<div class="mf-alert">${me.lang.translate('FILE_INFO_DOWNLOAD_NOT_ALLOWED_FILE')}</div>`;
+        fileInfoData += `<div class="mf-alert">${alertIcon}${me.lang.translate('FILE_INFO_DOWNLOAD_NOT_ALLOWED_FILE')}</div>`;
       } else if (me.file.permissions.allowDownloadReason == 'FOLDER_DENIED') {
-        fileInfoData += `<div class="mf-alert">${me.lang.translate('FILE_INFO_DOWNLOAD_NOT_ALLOWED_FOLDER')}</div>`;
+        fileInfoData += `<div class="mf-alert">${alertIcon}${me.lang.translate('FILE_INFO_DOWNLOAD_NOT_ALLOWED_FOLDER')}</div>`;
       } else if (me.file.permissions.allowDownloadReason == 'DATE_DENIED') {
         var dateText = me.lang.translate('FILE_INFO_DOWNLOAD_NOT_ALLOWED_DATE');
         if (me.file.rights.useTom) {
           dateText += ' ' + me.file.rights.useTom;
         }
-        fileInfoData += `<div class="mf-alert">${dateText}</div>`;
+        fileInfoData += `<div class="mf-alert">${alertIcon}${dateText}</div>`;
       }
       canDownload = false;
     }
@@ -207,11 +221,11 @@ export default {
       
       // Check expired first
       if(warn && me.file.permissions.lockWarningMessage.startsWith("RIGHTS_EXPIRED")){
-        fileInfoData += `<div class="mf-alert">${me.lang.translate('LICENSE_HAS_EXPIRED')}</div>`;
+        fileInfoData += `<div class="mf-alert">${alertIcon}${me.lang.translate('LICENSE_HAS_EXPIRED')}</div>`;
       }
       // then expire (starts with order)
       else if(warn && me.file.permissions.lockWarningMessage.startsWith("RIGHTS_EXPIRE")){
-        fileInfoData += `<div class="mf-warning">${me.lang.translate('LICENSE_WILL_EXPIRE')}</div>`;
+        fileInfoData += `<div class="mf-warning">${warningIcon}${me.lang.translate('LICENSE_WILL_EXPIRE')}</div>`;
       }
     }
     //#endregion
@@ -252,7 +266,7 @@ export default {
       fileInfoData += `<label>${me.lang.translate('FILE_VIEW_MARKING')}</label>
       <div class="mf-mark-wrapper">
         <span class="${className}"></span>
-        <span class="mf-mark-name">${markName}</span>
+        <span class="mf-mark-name">${_this.escapeHtml(markName)}</span>
       </div>`;
     } 
 

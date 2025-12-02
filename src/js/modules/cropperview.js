@@ -20,9 +20,10 @@ export default {
     }
 
     if(me.config.downloadFormat === 'mediaflow' || me.config.downloadFormat === 'both') {
-       me.api.get('formats?fields=id,name,suffix,filetype,width,height', 
+      me.api.get('formats?fields=id,name,suffix,filetype,width,height,keepRatio', 
         function(o){me.formats = me.formats.concat(o);}, 
-        function(o){console.error('Error: Failed to get formats data');});
+        function(o){console.error('Error: Failed to get formats data');}
+      );
     }else if(me.config.downloadFormat === 'original') {
       me.formats = [{id:0, name:'Original', width:-1, height:-1, format:'', dpi:0}];
     }else if(me.config.downloadFormat === 'stream') {
@@ -77,6 +78,8 @@ export default {
     div2.style.bottom = '0';
     div2.className = 'mf-leftpane-box';
 
+    me.config.debugMode && addToggleButton(div2, me);
+
     var div3 = document.createElement('div');
     div3.style.left = '0';
     div3.style.width = '400px';
@@ -84,9 +87,11 @@ export default {
     div3.style.padding = '16px 0';
     div3.className = 'mf-leftpane-topbox';
     var divbtn = document.createElement('button');
+    divbtn.type = 'button';
     divbtn.innerHTML = '<svg slot="prefix" xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-chevron-left" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"></path></svg>'+me.lang.translate('CROPPER_OTHER_FILE');
     divbtn.className = 'mf-backlink';
     divbtn.addEventListener('click', function(e) {
+      e.preventDefault();
       me.backClickCallback(me);
     }, false);
     div3.appendChild(divbtn);
@@ -161,7 +166,7 @@ export default {
     spann.innerText = 'px';
     tdn.appendChild(spann);
     me.widthInputRow.appendChild(tdn);
-    if(me.formats.length>0)
+    if(me.formats.length > 0)
       me.widthInputRow.style.display = 'none';
     tbl.appendChild(me.widthInputRow);
     // #endregion
@@ -185,7 +190,7 @@ export default {
     spann.innerText = 'px';
     tdn.appendChild(spann);
     me.heightInputRow.appendChild(tdn);
-    if(me.formats.length>0)
+    if(me.formats.length > 0)
       me.heightInputRow.style.display = 'none';
     tbl.appendChild(me.heightInputRow);
     // #endregion
@@ -206,7 +211,7 @@ export default {
 
     // #region Alt text
     trn = document.createElement('tr');
-    if(me.config?.setAltText === false ?? false){
+    if(me.config?.setAltText === false){
       trn.style.display='none';
     }
     tdn = document.createElement('td');
@@ -367,7 +372,9 @@ export default {
 
     setCropperSizeAndPosition();
 
-    var aspectRatio = 16/9;
+    let aspectRatio = 16/9;
+    let handleKeepRatioFormat = false; // Used if we have a "keepRatio" format
+
     if(me.formats.length > 0) {
       me.formatSelector.selectedIndex = 4; // The first crop format in drop-down from MF or if downloadFormat = "original".
       me.selectedFormat = me.formats[0].id;
@@ -376,6 +383,9 @@ export default {
         me.lastEntered.w = me.file.width; // set width to original image width
         me.lastEntered.h = me.file.height; // set height to original image height
         aspectRatio = me.lastEntered.w / me.lastEntered.h;
+      } // "Keep Ratio"? 
+      else if(this.isKeepRatioFormatSelected(me.formats[0])) {
+        handleKeepRatioFormat = true;
       } else {
         aspectRatio = me.formats[0].width / me.formats[0].height;
         me.lastEntered.w = me.formats[0].width;
@@ -413,12 +423,13 @@ export default {
         aspectRatio: aspectRatio,
         autoCropArea: 1,
         zoomable: false,
+        movable: false,
         crop: function(event) {
-        // Fix for when event.detail.height and/or event.detail.width = Infinity | NaN
-        if((event.detail.width === Infinity || event.detail.height === Infinity) ||
-          (isNaN(event.detail.width) || isNaN(event.detail.height))) {
-          return;
-        }
+          // Fix for when event.detail.height and/or event.detail.width = Infinity | NaN
+          if((event.detail.width === Infinity || event.detail.height === Infinity) ||
+            (isNaN(event.detail.width) || isNaN(event.detail.height))) {
+            return;
+          }
 
           if(me.lastEntered.direction === 'w') {
             me.widthInput.value = me.lastEntered.w;
@@ -430,6 +441,7 @@ export default {
           me.cropperview.checkCropSize(me, Math.round(event.detail.width), Math.round(event.detail.height));
         },
         ready: function (event) {
+          handleKeepRatioFormat && me.cropperview?.handleKeepRatioFormat(me, me.formats[0]); // If we have a "keepRatio" format selected
           var idata = me.cropper.getImageData();
           if (Math.abs(idata.naturalWidth / idata.naturalHeight - aspectRatio) < 0.01) {
            var contData = me.cropper.getContainerData();
@@ -503,6 +515,32 @@ export default {
     if(disableCropper && [-100, -101, -102].includes(Number.parseInt(me.selectedFormat))){
       me.cropperview.clickDone(me);
     }
+
+    function addToggleButton(container, me) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn-toggle-details-debug';
+      Object.assign(btn.style, {
+        position: 'absolute',
+        width: '10px',
+        height: '10px',
+        left: '0',
+        bottom: '0',
+        border: '0',
+        background: 'transparent'
+     });
+
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        const widthRow = me.widthInputRow;
+        const heightRow = me.heightInputRow;
+        if (!heightRow || !widthRow) return;
+        heightRow.style.display = (heightRow.style.display === 'none') ? '' : 'none';
+        widthRow.style.display = (widthRow.style.display === 'none') ? '' : 'none';
+      }, false);
+
+      container.appendChild(btn);
+    }
   },
   checkCropSize: function(me, w, h) {
     var ww = 700;
@@ -562,6 +600,7 @@ export default {
     me.lastEntered.direction = direction;
   },
   changeFormat: function(e, me) {
+    me.cropper?.enable(); // In case it was disabled due to "keepRatio" format
     var selOpt = me.formatSelector[me.formatSelector.selectedIndex];
     var selectedFormatValue = parseInt(selOpt.value, 10);
     me.selectedFormat = selOpt.dataset.id;
@@ -578,6 +617,9 @@ export default {
         var canvasData = me.cropper.getCanvasData();
         me.cropper.setAspectRatio(me.file.width / me.file.height);
         me.cropper.setCropBoxData({top:0, left:0, width:canvasData.width, height:canvasData.height});
+      }// "Keep Ratio"?
+      else if(this.isKeepRatioFormatSelected(me.formats[selectedFormatValue])) {
+        this.handleKeepRatioFormat(me, me.formats[selectedFormatValue]);
       } else {
         me.lastEntered.w = me.formats[selectedFormatValue].width;
         me.lastEntered.h = me.formats[selectedFormatValue].height;
@@ -597,7 +639,7 @@ export default {
 
         if (me.config?.defaults?.format === -1) {
           // (Very) special case when using defaults and format -1 ("Free crop")
-          // As "setAspectRatio(NaN)"" recalculates the cropper box, we need to do some math to match this.
+          // As "setAspectRatio(NaN)" recalculates the cropper box, we need to do some math to match this.
           const canvasData = me.cropper.getCanvasData();
           // height/width
           const canvasHeightWidthRatio = canvasData.height / canvasData.width;
@@ -609,14 +651,12 @@ export default {
 
           // NOTE: It does NOT work to set left and top at the same time as width and height to get this to work. Do not know why.
           if (canvasHeightWidthRatio > formatHeightWidthRation) {
-            //const ratio = formatWidthHeightRation >= 1 ? (canvasHeightWidthRatio / formatHeightWidthRation) : (formatHeightWidthRation / canvasHeightWidthRatio);
             const ratio = (formatHeightWidthRation / canvasHeightWidthRatio);
-            me.cropper.setCropBoxData({ /*left: cropBoxLeft, top: cropBoxTop,*/ width: canvasData.width, height: canvasData.height * ratio });
+            me.cropper.setCropBoxData({ width: canvasData.width, height: canvasData.height * ratio });
           }
           else if (canvasWidthHeightRatio > formatWidthHeightRation) {
-            //const ratio = formatWidthHeightRation >= 1 ? (canvasWidthHeightRatio / formatWidthHeightRation) : (formatWidthHeightRation / canvasWidthHeightRatio);
             const ratio = (formatWidthHeightRation / canvasWidthHeightRatio);
-            me.cropper.setCropBoxData({ /*left: cropBoxLeft, top: cropBoxTop,*/ width: canvasData.width * ratio, height: canvasData.height });
+            me.cropper.setCropBoxData({ width: canvasData.width * ratio, height: canvasData.height });
           }
 
           // Adjust cprop box position
@@ -637,7 +677,7 @@ export default {
         me.lastEntered.h = me.file.height; // set height to original image height
         var canvasData = me.cropper.getCanvasData();
         me.cropper.setAspectRatio(me.file.width / me.file.height);
-        me.cropper.setCropBoxData({ top: 0, left: 0, width: canvasData.width, height: canvasData.height });
+        me.cropper.setCropBoxData({ width: canvasData.width, height: canvasData.height });
       }
     }
   },
@@ -654,13 +694,15 @@ export default {
     }
 
     if(me.config.showDoneButton !== false) {
+      let btn;
       if (me.config.rootElement) {
         // If rootElement is set, use it to find the button. This is necessary when using the file selector in a web component.
-        var btn = me.config.rootElement.querySelector('#mf-btn-done');
+        btn = me.config.rootElement.querySelector('#mf-btn-done');
       } else {
-        var btn = document.getElementById('mf-btn-done');
+        btn = document.getElementById('mf-btn-done');
       }
       btn.disabled = true;
+      
       if(me.config.showDoneButtonWorkingFlow){
         btn.classList.add('working');
         btn.innerText = me.lang.translate('FILE_VIEW_FETCHING_DATA');
@@ -706,6 +748,10 @@ export default {
       if(me.config.downloadFormat === 'original'){
         ww = me.file.width;
         hh = me.file.height
+      } // "KeepRatio"
+      else if(this.isKeepRatioFormatSelected(me.formats[selectedFormatValue])) { // "Keep Ratio" format selected
+        ww = widthInput;
+        hh = heightInput;
       }
       else if (selectedFormatValue >= 0) { // crop formats defined in MF (or a 'fixed' format with id=0)
         ww = me.formats[selectedFormatValue].width;
@@ -831,11 +877,11 @@ export default {
             }, 5);
           } catch (e) {
             me.isDownloading = false;
-            alert('ERR:' + method + ',JSON');
+            alert('ERR:doDownload, JSON');
           }
         } else {
           me.isDownloading = false;
-          alert('ERR:' + method + ',' + xhr.status);
+          alert('ERR: doDownload, status: ' + xhr.status);
         }
 
         // Show "all done" message to user
@@ -861,15 +907,46 @@ export default {
     });
   },
   validateURL: function(inputElement) {
-    const regex = /^(?:$|https?:\/\/[-\w@:%._\+~#=]{1,256}(?:\.[a-zA-Z0-9()]{2,6})?(?:\/[-\w@:%_\+.~#?&\/=]*)?)$/;
-    const urlToBeTested = inputElement.value.trim();
-    if(regex.test(urlToBeTested) === false) {
-      inputElement.setCustomValidity('Invalid input!');
-    }else{ 
+    const urlToBeTested = (inputElement.value || '').trim();
+
+    // allow empty value (no navigation link)
+    if (urlToBeTested === '') {
       inputElement.setCustomValidity('');
+      return;
+    }
+
+    try {
+      const u = new URL(urlToBeTested);
+      if (u.protocol === 'http:' || u.protocol === 'https:') {
+        inputElement.setCustomValidity('');
+      } else {
+        inputElement.setCustomValidity('Invalid input: only http(s) URLs allowed');
+      }
+    } catch (e) {
+      inputElement.setCustomValidity('Invalid input!');
     }
   },
   resetValidateURL: function(inputElement) {
     inputElement.setCustomValidity('');
+  },
+  isKeepRatioFormatSelected: function(selectedFormat) {
+    // width or height must also be 0, else not valid
+    return (selectedFormat?.keepRatio && (selectedFormat.width === 0 || selectedFormat.height === 0)) ?? false;
+  },
+  handleKeepRatioFormat: function(me, selectedFormat) {
+    // "KeepRatio" and one of the dimensions is 0 - we need to calculate it based on the image's aspect ratio
+    const imagerAspectRatio = me.file.width / me.file.height;
+    if (selectedFormat.width === 0) {
+      me.lastEntered.w = Math.round(selectedFormat.height * imagerAspectRatio);
+      me.lastEntered.h = selectedFormat.height;
+    } else {
+      me.lastEntered.w = selectedFormat.width;
+      me.lastEntered.h = Math.round(selectedFormat.width / imagerAspectRatio);
+    }
+
+    me.widthInput.value = me.lastEntered.w;
+    me.heightInput.value = me.lastEntered.h;
+    me.cropper?.setAspectRatio(imagerAspectRatio);
+    me.cropper?.disable();
   }
 };
