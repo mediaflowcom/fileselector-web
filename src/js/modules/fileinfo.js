@@ -389,7 +389,8 @@ export default {
 
     if(me.file.type.type === 'video') {
       // Pause video if playing
-      document.querySelector('#videoIframe').contentWindow.postMessage({context: 'mediaflowplayer', event :'pausevideo'}, "*");
+      const rootElement = me.config.rootElement || document;
+      rootElement.querySelector('#videoIframe').contentWindow.postMessage({context: 'mediaflowplayer', event :'pausevideo'}, "*");
     }
   },  
   escapeHtml: function(str) {
