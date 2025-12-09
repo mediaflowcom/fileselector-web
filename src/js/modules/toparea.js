@@ -30,7 +30,8 @@ export default {
     sb.className = 'mf-search-bar';
     sb.addEventListener('keypress', function (e) {
       if (e.key == 'Enter') {
-        const aiSearch = document.getElementById("ai-switch")?.checked ?? false;
+        var rootElement = me.config.rootElement || document;
+        const aiSearch = rootElement.querySelector("#ai-switch")?.checked ?? false;
         _this.clickCallback(me, sb.value, aiSearch);
       }
       else {
@@ -69,10 +70,14 @@ function renderAiSwitch(me, div) {
       if (aiSearchActivatedInMF) {
         const aiToggle =
           `<div class="mf-ai-switch">AI
-          <input id="ai-switch" type="checkbox" onchange="document.querySelector('.mf-search-bar')?.focus()">
+          <input id="ai-switch" type="checkbox">
           <label for="ai-switch" title="${me.lang.translate("TOPBAR_SEARCH_AI_SWITCH")}"></label>
         </div>`;
         div.insertAdjacentHTML('beforeend', aiToggle);
+        var rootElement = me.config.rootElement || document;
+        rootElement.querySelector('#ai-switch').addEventListener('change', function() {
+          rootElement.querySelector('.mf-search-bar')?.focus();
+        });
       }
     },
     function (result) { console.error('Error: Failed to get users data'); }

@@ -151,14 +151,14 @@ export default {
         me.useStartOffset = e.target.checked;
                                               
         if(me.useStartOffset) {
-            document.getElementById(inpH.id).style.display='';
-            document.getElementById(inpM.id).style.display='';
-            document.getElementById(inpS.id).style.display='';
+            inpH.style.display='';
+            inpM.style.display='';
+            inpS.style.display='';
         }
         else {
-            document.getElementById(inpH.id).style.display='none';
-            document.getElementById(inpM.id).style.display='none';
-            document.getElementById(inpS.id).style.display='none';
+            inpH.style.display='none';
+            inpM.style.display='none';
+            inpS.style.display='none';
         }
       });
       cb.id = 'mf_startTime';
@@ -205,9 +205,9 @@ export default {
         if(v.value === '') return 0;
         return parseInt(v.value,10);
       }
-      inpH.addEventListener('input', function(e) {me.startTime = getIntVal(document.getElementById(inpH.id)) * 3600 + getIntVal(document.getElementById(inpM.id)) * 60 + getIntVal(document.getElementById(inpS.id));});
-      inpM.addEventListener('input', function(e) {me.startTime = getIntVal(document.getElementById(inpH.id)) * 3600 + getIntVal(document.getElementById(inpM.id)) * 60 + getIntVal(document.getElementById(inpS.id));});
-      inpS.addEventListener('input', function(e) {me.startTime = getIntVal(document.getElementById(inpH.id)) * 3600 + getIntVal(document.getElementById(inpM.id)) * 60 + getIntVal(document.getElementById(inpS.id));});
+      inpH.addEventListener('input', function(e) {me.startTime = getIntVal(inpH) * 3600 + getIntVal(inpM) * 60 + getIntVal(inpS);});
+      inpM.addEventListener('input', function(e) {me.startTime = getIntVal(inpH) * 3600 + getIntVal(inpM) * 60 + getIntVal(inpS);});
+      inpS.addEventListener('input', function(e) {me.startTime = getIntVal(inpH) * 3600 + getIntVal(inpM) * 60 + getIntVal(inpS);});
       div4.appendChild(inpH);
       div4.appendChild(inpM);
       div4.appendChild(inpS);
@@ -316,7 +316,11 @@ export default {
                   var theme = this.themes.find(x => x.themeId == this.me.pickedTheme);
                   if (theme) {
                     this.me.autoPlay = theme.settings.autoPlay;
-                    document.getElementById('mf_autostart').checked = this.me.autoPlay;
+                    if (this.me.config.rootElement) {
+                      this.me.config.rootElement.querySelector('#mf_autostart').checked = this.me.autoPlay;
+                    } else {
+                      document.getElementById('mf_autostart').checked = this.me.autoPlay;
+                    }
                   }
 
                   this.renderPlayerPreview();
@@ -428,7 +432,11 @@ export default {
 
       // Show "all done" message to user
       if(me.config.showDoneButtonWorkingFlow){
-        var btn = document.getElementById('mf-btn-done');
+        if (me.config.rootElement) {
+          var btn = me.config.rootElement.querySelector('#mf-btn-done');
+        } else {
+          var btn = document.getElementById('mf-btn-done');
+        }
         btn.classList.add('working-done');
         btn.classList.remove('working');
         btn.innerHTML = `<div><svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" class="bi bi-check-circle-fill" viewBox="0 0 16 16">
@@ -465,7 +473,11 @@ export default {
 
         // Show "all done" message to user
         if(me.config.showDoneButtonWorkingFlow){
-          var btn = document.getElementById('mf-btn-done');
+          if (me.config.rootElement) {
+            var btn = me.config.rootElement.querySelector('#mf-btn-done');
+          } else {
+            var btn = document.getElementById('mf-btn-done');
+          }
           btn.classList.add('working-done');
           btn.classList.remove('working');
           btn.innerText = me.lang.translate('FILE_VIEW_FETCHING_DATA_DONE');
