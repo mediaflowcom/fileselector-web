@@ -106,7 +106,8 @@ export default {
       tabInfo.innerText = me.lang.translate('FILE_INFO_TAB');
       tabInfo.onclick = function(e) {
         e.preventDefault();
-        var tabActive = document.querySelector('.mf-tabs-container .mf-tab.active');
+        var rootElement = me.config.rootElement || document;
+        var tabActive = rootElement.querySelector('.mf-tabs-container .mf-tab.active');
         if(tabActive) {
           tabActive.classList.remove('active');
         }
@@ -123,7 +124,8 @@ export default {
       tabUsage.innerText = me.lang.translate('FILEUSAGE_TAB');
       tabUsage.onclick = function(e) {
         e.preventDefault();
-        var tabActive = document.querySelector('.mf-tabs-container .mf-tab.active');
+        var rootElement = me.config.rootElement || document;
+        var tabActive = rootElement.querySelector('.mf-tabs-container .mf-tab.active');
         if(tabActive) {
           tabActive.classList.remove('active');
         }
@@ -379,8 +381,14 @@ export default {
 
     if(!canDownload) {
       //set disabled attribute
-      if(document.getElementById('mf-use-btn')){
-        document.getElementById('mf-use-btn').setAttribute('disabled', 'disabled');
+      if (me.config.rootElement) {
+        if(me.config.rootElement.querySelector('#mf-use-btn')){
+          me.config.rootElement.querySelector('#mf-use-btn').setAttribute('disabled', 'disabled');
+        }
+      } else {
+        if(document.getElementById('mf-use-btn')){
+          document.getElementById('mf-use-btn').setAttribute('disabled', 'disabled');
+        }
       }
     }
   },
