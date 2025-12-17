@@ -886,7 +886,11 @@ export default {
 
         // Show "all done" message to user
         if(me.config.showDoneButtonWorkingFlow){
-          var btn = document.getElementById('mf-btn-done');
+          if (me.config.rootElement) {
+            var btn = me.config.rootElement.querySelector('#mf-btn-done');
+          } else {
+            var btn = document.getElementById('mf-btn-done');
+          }
           btn.classList.add('working-done');
           btn.classList.remove('working');
           btn.innerHTML = `<div><svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" class="bi bi-check-circle-fill" viewBox="0 0 16 16">
