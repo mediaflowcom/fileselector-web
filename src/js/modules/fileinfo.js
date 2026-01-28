@@ -13,6 +13,10 @@ export default {
 
     me.api.get('file/' + me.files[idx].id + '?fields=any&locale=' + me.lang.locale(), function (o) {
       me.file = o[0];
+      
+      if (me.file.customFields) {
+        me.file.customFields = me.file.customFields.filter((cf) => cf.value)
+      }
 
       me.api.get('file/' + me.files[idx].id + '/checkpermissions', function (permissions) {
         me.file.permissions = permissions[0];
