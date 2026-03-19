@@ -15,7 +15,7 @@ export default {
       me.file = o[0];
       
       if (me.file.customFields) {
-        me.file.customFields = me.file.customFields.filter((cf) => cf.value)
+        me.file.customFields = me.file.customFields.filter((cf) => cf.value !== "" && cf.value != null);
       }
 
       me.api.get('file/' + me.files[idx].id + '/checkpermissions', function (permissions) {
