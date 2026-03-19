@@ -1,4 +1,4 @@
-﻿/* Mediaflow main JS */
+/* Mediaflow main JS */
 export default function MFAPI(baseURI, config)
 {
   var accesstoken = '';
@@ -24,9 +24,9 @@ export default function MFAPI(baseURI, config)
 
   // Ensure we have a valid access token before calling the API
   async function ensureAccessToken() {
-    // If a token load is already in progress, wait for it...
+    // If a token load is already in progress, return it.
     if (loadingPromise) {
-      await loadingPromise;
+      return loadingPromise;
     }
 
     loadingPromise = new Promise((resolve, reject) => {
@@ -51,9 +51,15 @@ export default function MFAPI(baseURI, config)
       body.append("client_id", client_id);
       body.append("client_secret", client_secret);
       body.append("refresh_token", refresh_token);
+      if(typeof(username) === 'string' && username.length > 0) {
+        body.append("username", username);
+      }
 
       xhr.open('POST', config.oauthBase + '/oauth2/token');
       xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+      xhr.onerror = function() {
+        reject('ERR:POST,AUTHJSON');
+      };
       xhr.onload = function() {
         if (xhr.readyState === 4) {
           if(xhr.status === 200) {
@@ -72,6 +78,17 @@ export default function MFAPI(baseURI, config)
         }
       };
       xhr.send(body);
+    });
+
+    var currentLoadingPromise = loadingPromise;
+    currentLoadingPromise.then(function() {
+      if (loadingPromise === currentLoadingPromise) {
+        loadingPromise = undefined;
+      }
+    }, function() {
+      if (loadingPromise === currentLoadingPromise) {
+        loadingPromise = undefined;
+      }
     });
 
     return loadingPromise;
