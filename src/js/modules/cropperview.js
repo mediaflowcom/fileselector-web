@@ -856,7 +856,7 @@ export default {
                 height: hh,
                 additionalInfo: me.file.additionalInfo,
                 customFields: me.file.customFields,
-                description: me.file.description,
+                description: me.fileDescription.value,
                 photographer: me.file.photographer,
                 instructions: me.file.instructions,
                 keywords: me.file.keywords,
