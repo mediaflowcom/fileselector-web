@@ -49,7 +49,7 @@ export default function MFAPI(baseURI, config)
       body.append("client_secret", client_secret);
       body.append("refresh_token", refresh_token);
 
-      xhr.open('POST', 'https://accounts.mediaflow.com/oauth2/token');
+      xhr.open('POST', config.oauthBase + '/oauth2/token');
       xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
       xhr.onload = function() {
         if (xhr.readyState === 4) {

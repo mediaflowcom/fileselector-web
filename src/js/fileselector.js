@@ -46,6 +46,10 @@ export default class FileSelector {
 		if(typeof(config.apiBase) !== 'string' || config.apiBase.length<10 || config.apiBase.substring(0,4) !== 'http') {
 			config.apiBase = "https://api.mediaflow.com/1";
 		}
+
+		if(typeof(config.oauthBase) !== 'string' || config.oauthBase.length<10 || config.oauthBase.substring(0,4) !== 'http') {
+			config.oauthBase = "https://accounts.mediaflow.com";
+		}
 	  
 		if(typeof(config.locale) !== 'string' || config.locale.length !== 5)
 		  config.locale = 'sv_SE';

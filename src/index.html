@@ -180,6 +180,7 @@
       document.getElementById('browsebtn').style.display = 'none';
       var lang = document.getElementById('lang').value;
       var apiBase = 'https://api.' + document.getElementById('domain').value + '/1';
+      var oauthBase = 'https://accounts.' + document.getElementById('domain').value;
       let preset = document.getElementById("preset").value;
 
       // Testing set-up examples
@@ -196,7 +197,7 @@
           break;
       }
 
-      currentFsSettings = { ...currentFsSettings, locale: lang, client_id: clientId, client_secret: clientSecret, refresh_token: refreshToken, apiBase: apiBase }
+      currentFsSettings = { ...currentFsSettings, locale: lang, client_id: clientId, client_secret: clientSecret, refresh_token: refreshToken, apiBase: apiBase, oauthBase: oauthBase };
 
       myFileSelector = new FileSelector("test1", {...currentFsSettings });
     }
