@@ -391,7 +391,7 @@ export default class FileSelector {
 											keywords: me.file.keywords
 										});
 									} catch(e) {
-										alert('Ett fel inträffade vid nerladdning av fil');
+										alert(me.lang.translate('CROPPER_DOWNLOAD_FAILED'));
 									}
 								}
 							}
@@ -422,7 +422,7 @@ export default class FileSelector {
 						}, 5);
 					}
 				}, function(o) {
-					alert('Ett fel inträffade vid nerladdning av fil');
+					alert(me.lang.translate('CROPPER_DOWNLOAD_FAILED'));
 					me.isDownloading = false;
 				});
 			} else {
