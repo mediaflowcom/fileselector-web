@@ -30,8 +30,11 @@ export default function MFAPI(baseURI, config)
     }
 
     loadingPromise = new Promise((resolve, reject) => {
-      // Leave if no access token is necessary
-      if(authtype !== 'refresh_token' && authtype !== 'access_token') {
+      // Leave if no access token renewal is necessary
+      if(authtype !== 'refresh_token') {
+        if (authtype === 'access_token') {
+            tokentype = 'Bearer';
+        }
         resolve();
         return;
       }
