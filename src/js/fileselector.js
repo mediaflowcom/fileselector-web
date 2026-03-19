@@ -48,7 +48,12 @@ export default class FileSelector {
 		}
 
 		if(typeof(config.oauthBase) !== 'string' || config.oauthBase.length<10 || config.oauthBase.substring(0,4) !== 'http') {
-			config.oauthBase = "https://accounts.mediaflow.com";
+			var apiBaseMatchesMediaflowHost = config.apiBase.match(/^(https?:\/\/)api(\.[^/]+)(?:\/.*)?$/);
+			if(apiBaseMatchesMediaflowHost) {
+				config.oauthBase = apiBaseMatchesMediaflowHost[1] + 'accounts' + apiBaseMatchesMediaflowHost[2];
+			} else {
+				config.oauthBase = config.apiBase;
+			}
 		}
 	  
 		if(typeof(config.locale) !== 'string' || config.locale.length !== 5)
