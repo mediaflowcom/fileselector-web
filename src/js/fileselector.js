@@ -391,7 +391,7 @@ export default class FileSelector {
 											keywords: me.file.keywords
 										});
 									} catch(e) {
-										alert(me.lang.translate('CROPPER_DOWNLOAD_FAILED'));
+										alert(me.lang.translate('DOWNLOAD_FAILED'));
 									}
 								}
 							}
@@ -422,7 +422,7 @@ export default class FileSelector {
 						}, 5);
 					}
 				}, function(o) {
-					alert(me.lang.translate('CROPPER_DOWNLOAD_FAILED'));
+					alert(me.lang.translate('DOWNLOAD_FAILED'));
 					me.isDownloading = false;
 				});
 			} else {
