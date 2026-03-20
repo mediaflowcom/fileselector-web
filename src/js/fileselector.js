@@ -380,7 +380,7 @@ export default class FileSelector {
 											basetype: me.file.type.type, 
 											filetype: me.file.type.extension, 
 											width: me.file.width, 
-											height: me.file.width, 
+											height: me.file.height, 
 											photographer: me.file.photographer,
 											altText: me.config.autosetAltText !== false ? me.file.alttext : "",
 											// Extra metadata:
@@ -409,7 +409,7 @@ export default class FileSelector {
 								basetype:me.file.type.type, 
 								filetype:me.file.type.extension, 
 								width:me.file.width, 
-								height:me.file.width, 
+								height:me.file.height, 
 								photographer:me.file.photographer,
 								altText: me.config.autosetAltText !== false ? me.file.alttext : "",
 								// Extra metadata:
