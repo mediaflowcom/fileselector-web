@@ -417,7 +417,11 @@ export default {
       me.config.success({
         id: me.file.id, 
         folderId: me.selectedFolderId,
+        additionalInfo: me.file.additionalInfo,
+        customFields: me.file.customFields,
         description: me.file.description,
+        instructions: me.file.instructions,
+        keywords: me.file.keywords,
         poster: me.file.poster, 
         mediaId: me.file.mediaId, 
         filename: me.file.filename, 
