@@ -449,7 +449,9 @@ export default {
           }
           // If we use defaults format, we may need to recalculate the cropper box
           usingDefaultsFormat && setDefaultFormat();
-          me.config.events('cropperViewReady', me);
+          if(typeof(me.config.events)==='function') {
+            me.config.events('cropperViewReady', me);
+          }
         }
       });
       me.cropperviewVisible = true;
