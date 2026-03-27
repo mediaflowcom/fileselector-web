@@ -736,7 +736,6 @@ export default {
     let ww, hh;
 
     const altText = me.altInput.value;
-    const description = me.fileDescription.value;
     const fileName = me.filenameInput.value;
 
     const selectedFormatValue = parseInt(me.formatSelector[me.formatSelector.selectedIndex].value, 10);
@@ -855,8 +854,12 @@ export default {
                 filetype: fileType,
                 width: ww,
                 height: hh,
-                description: description,
+                additionalInfo: me.file.additionalInfo,
+                customFields: me.file.customFields,
+                description: me.fileDescription.value,
                 photographer: me.file.photographer,
+                instructions: me.file.instructions,
+                keywords: me.file.keywords,
                 altText: altText,
                 canvasWidth: safeCanvasWidth,
                 canvasHeight: safeCanvasHeight,

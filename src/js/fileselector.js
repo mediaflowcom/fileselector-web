@@ -367,7 +367,7 @@ export default class FileSelector {
 				if(me.isDownloading)
 					return false;
 			  	me.isDownloading = true;
-			  	me.api.get('file/' + me.file.id + '/downloads/0', function(o) {
+				me.api.get('file/' + me.file.id + '/downloads/0', function(o) {
 					me.isDownloading = false;
 					var downloadURL = o[0].downloadURL;
 					if (me.config.permanentURL && (me.isValidFileType(me.file))){
@@ -375,29 +375,35 @@ export default class FileSelector {
 						var xhr = new XMLHttpRequest();
 						xhr.open('GET', downloadURL);
 						xhr.onload = function() {
-						  if (xhr.readyState === 4) {
-							if(xhr.status === 200 || xhr.status === 201) {
-							  try {
-								var o = JSON.parse(xhr.responseText);
-								me.config.success({
-									url: o.url, 
-									name:me.file.name, 
-									filename:me.file.filename, 
-									mediaId: me.file.mediaId, 
-									id:  me.file.id, 
-									folderId: me.selectedFolderId,
-									basetype: me.file.type.type, 
-									filetype: me.file.type.extension, 
-									width: me.file.width, 
-									height: me.file.width, 
-									photographer: me.file.photographer,
-									altText: me.config.autosetAltText !== false ? me.file.alttext : ""
-								 });
-							  } catch(e) {
-								alert('Ett fel inträffade vid nerladdning av fil');
-							  }
+							if (xhr.readyState === 4) {
+								if(xhr.status === 200 || xhr.status === 201) {
+									try {
+										var o = JSON.parse(xhr.responseText);
+										me.config.success({
+											url: o.url, 
+											name:me.file.name, 
+											filename:me.file.filename, 
+											mediaId: me.file.mediaId, 
+											id:  me.file.id, 
+											folderId: me.selectedFolderId,
+											basetype: me.file.type.type, 
+											filetype: me.file.type.extension, 
+											width: me.file.width, 
+											height: me.file.height, 
+											photographer: me.file.photographer,
+											altText: me.config.autosetAltText !== false ? me.file.alttext : "",
+											// Extra metadata:
+											additionalInfo: me.file.additionalInfo,
+											customFields: me.file.customFields,
+											description: me.file.description,
+											instructions: me.file.instructions,
+											keywords: me.file.keywords
+										});
+									} catch(e) {
+										alert(me.lang.translate('DOWNLOAD_FAILED'));
+									}
+								}
 							}
-						  }
 						}
 						xhr.send();
 					} else {
@@ -412,15 +418,21 @@ export default class FileSelector {
 								basetype:me.file.type.type, 
 								filetype:me.file.type.extension, 
 								width:me.file.width, 
-								height:me.file.width, 
+								height:me.file.height, 
 								photographer:me.file.photographer,
-								altText: me.config.autosetAltText !== false ? me.file.alttext : ""
-							 });
+								altText: me.config.autosetAltText !== false ? me.file.alttext : "",
+								// Extra metadata:
+								additionalInfo: me.file.additionalInfo,
+								customFields: me.file.customFields,
+								description: me.file.description,
+								instructions: me.file.instructions,
+								keywords: me.file.keywords
+							});
 						}, 5);
 					}
-			  	}, function(o) {
-				  	alert('Ett fel inträffade vid nerladdning av fil');
-				  	me.isDownloading = false;
+				}, function(o) {
+					alert(me.lang.translate('DOWNLOAD_FAILED'));
+					me.isDownloading = false;
 				});
 			} else {
 				if(me.cropperviewVisible) {
@@ -440,6 +452,12 @@ export default class FileSelector {
 								basetype:me.file.type.type, 
 								filetype:me.file.type.extension,
 								folderId: me.selectedFolderId,
+								// Extra metadata:
+								additionalInfo: me.file.additionalInfo,
+								customFields: me.file.customFields,
+								description: me.file.description,
+								instructions: me.file.instructions,
+								keywords: me.file.keywords
 							});}, 5);
 						  return true;
 						}
