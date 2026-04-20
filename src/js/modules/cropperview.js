@@ -129,9 +129,9 @@ export default {
       me.formatSelector.innerHTML += `<option value="${me.config.defaults.format}" data-id="${me.config.defaults.format}">NONE (org. size)</option>`;
     }
 
-    me.formatSelector.innerHTML += `<option value="-3">${me.lang.translate('CROPPER_USE_ENTIRE_IMAGE')}</option>`;
-    me.formatSelector.innerHTML += `<option value="-2">${me.lang.translate('CROPPER_USE_OWN_FORMAT')}</option>`;
-    me.formatSelector.innerHTML += `<option value="-1">${me.lang.translate('CROPPER_CROP_FREELY')}</option>`;
+    me.formatSelector.innerHTML += `<option value="-3" data-id="-3">${me.lang.translate('CROPPER_USE_ENTIRE_IMAGE')}</option>`;
+    me.formatSelector.innerHTML += `<option value="-2" data-id="-2">${me.lang.translate('CROPPER_USE_OWN_FORMAT')}</option>`;
+    me.formatSelector.innerHTML += `<option value="-1" data-id="-1">${me.lang.translate('CROPPER_CROP_FREELY')}</option>`;
 
     if(me.formats.length > 0) {
       me.formatSelector.innerHTML += `<option value="-4">---${me.lang.translate('CROPPER_PREDEFINED_FORMATS')}---</option>`;
@@ -445,11 +445,13 @@ export default {
           var idata = me.cropper.getImageData();
           if (Math.abs(idata.naturalWidth / idata.naturalHeight - aspectRatio) < 0.01) {
            var contData = me.cropper.getContainerData();
-           me.cropper.setCropBoxData({ left: 0, top: 0, height: contData.height, width: contData.width })
+           me.cropper.setCropBoxData({ left: 0, top: 0, height: contData.height, width: contData.width });
           }
-
           // If we use defaults format, we may need to recalculate the cropper box
           usingDefaultsFormat && setDefaultFormat();
+          if(typeof(me.config.events)==='function') {
+            me.config.events('cropperViewReady', me);
+          }
         }
       });
       me.cropperviewVisible = true;
@@ -736,7 +738,6 @@ export default {
     let ww, hh;
 
     const altText = me.altInput.value;
-    const description = me.fileDescription.value;
     const fileName = me.filenameInput.value;
 
     const selectedFormatValue = parseInt(me.formatSelector[me.formatSelector.selectedIndex].value, 10);
@@ -855,8 +856,12 @@ export default {
                 filetype: fileType,
                 width: ww,
                 height: hh,
-                description: description,
+                additionalInfo: me.file.additionalInfo,
+                customFields: me.file.customFields,
+                description: me.fileDescription.value,
                 photographer: me.file.photographer,
+                instructions: me.file.instructions,
+                keywords: me.file.keywords,
                 altText: altText,
                 canvasWidth: safeCanvasWidth,
                 canvasHeight: safeCanvasHeight,
@@ -867,7 +872,8 @@ export default {
                   y2: cropY + cropH
                 },
                 cropWidth: cropW,
-                cropHeight: cropH
+                cropHeight: cropH,
+                cropFormat: me.formatSelector.options[me.formatSelector.selectedIndex].dataset.id
               };
               if(me.config.useNavigationLink === true && me.navigationLink.value.trim().length > 0) {
                 successObject.navigationLink = me.navigationLink.value.trim();
