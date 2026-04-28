@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
+# 2.4.3 2025-04-28
+
+### Added
+- Include all metadata (custom fields, description, etc.) in the returned success object
+- Include selected crop format by ID to the success object
+- Add a `cropperViewReady` event, fired when the cropper view has been initialized
+- Use the POST token endpoint when retrieving an access token
+
+### Fixed
+- Configurable account endpoint base URL for authentication
+- Bugfix: Height metadata assignment in file selector callbacks were wrong
+- Used translation key `general/downloadFailed` instead of hardcoded string
+
 # 2.4.2 2025-12-17
 
 ### Fixed
