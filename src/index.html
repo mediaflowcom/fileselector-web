@@ -93,12 +93,33 @@
     @media (width < 600px) {
       #test1{
         width: 100% !important;
-      }      
+      }
     }
+
+    #themeToggle {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 10000;
+      background: #307CAB;
+      color: #fff;
+      border: 0;
+      border-radius: 4px;
+      padding: 6px 10px;
+      font-family: inherit;
+      font-size: .8rem;
+      cursor: pointer;
+    }
+    #themeToggle:hover { background: #225677; }
   </style>
 </head>
 
 <body>
+  <button id="themeToggle" type="button" onclick="
+    var t = document.getElementById('test1');
+    var isLight = t.classList.toggle('light');
+    this.textContent = isLight ? 'Switch to dark' : 'Switch to light';
+  ">Switch to dark</button>
   <div id="settingsDiv" class="light">
     <div>
       <label>Active Refresh Token: </label>
@@ -337,6 +358,12 @@
           localStorage.setItem('refreshToken', _refreshToken.value);
         }
       }      
+    };
+
+    document.getElementById('themeToggle').onclick = function () {
+      const test1 = document.getElementById('test1');
+      const isLight = test1.classList.toggle('light');
+      this.textContent = isLight ? 'Switch to dark' : 'Switch to light';
     };
 
     // show file selector?

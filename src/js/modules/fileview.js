@@ -268,7 +268,7 @@ export default {
         header.classList.add('mf-reversed');
 
       header.style.cursor = 'pointer';
-      header.style.padding = '7px';
+      header.style.padding = '0 7px 7px';
 
       row = document.createElement('div');
       row.className = 'mf-row';
