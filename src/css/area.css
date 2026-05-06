@@ -106,5 +106,6 @@
 }
 
 .mf_cropperArea #mfCropperBoxWrapper img{
-    background-image:url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAQMAAAAlPW0iAAAAA3NCSVQICAjb4U/gAAAABlBMVEXMzMz////TjRV2AAAACXBIWXMAAArrAAAK6wGCiw1aAAAAHHRFWHRTb2Z0d2FyZQBBZG9iZSBGaXJld29ya3MgQ1M26LyyjAAAABFJREFUCJlj+M/AgBVhF/0PAH6/D/HkDxOGAAAAAElFTkSuQmCC");
+    background: conic-gradient(#9d9d9d 25%, #c0c0c0 0 50%, #9d9d9d 0 75%, #c0c0c0 0);
+    background-size: 6px 6px;
 }
