@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
+# 2.4.3 2026-05-06
+
+### Changed
+- Aligned the file selector UI with the mfui app design system: top
+  bar, search field, folder tree, file grid button group, table
+  header, tabs, primary button, scrollbars, file card radius, font
+  family, and overall border colors.
+- Replaced legacy SVG/PNG transparent checkerboard with two-tone
+  conic-gradient on file thumbnails, file info preview, and cropper.
+- Doubled `.mf-fileinfo` padding for breathing room.
+
+### Added
+- Dark / light mode toggle in the development test page.
+
 # 2.4.2 2025-12-17
 
 ### Fixed
