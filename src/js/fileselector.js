@@ -232,14 +232,14 @@ export default class FileSelector {
 		me.topArea.style.left = '0';
 		me.topArea.style.right = '0';
 		me.topArea.style.top = '0';		
-		me.topArea.style.height = '40px';
+		me.topArea.style.height = '50px';
 		me.topArea.className = 'mf_topArea';
 		me.item.appendChild(me.topArea);
 
 		me.foldertreeArea = document.createElement('div');
 		me.foldertreeArea.style.position = 'absolute';
 		me.foldertreeArea.style.left = '0';
-		me.foldertreeArea.style.top = '40px';
+		me.foldertreeArea.style.top = '50px';
 		me.foldertreeArea.style.bottom = '0';
 		me.foldertreeArea.style.width = '250px';
 		me.foldertreeArea.style.overflow = 'auto';
@@ -249,7 +249,7 @@ export default class FileSelector {
 		me.fileviewArea = document.createElement('div');
 		me.fileviewArea.style.position = 'absolute';
 		me.fileviewArea.style.left = '250px';
-		me.fileviewArea.style.top = '40px';
+		me.fileviewArea.style.top = '50px';
 		me.fileviewArea.style.bottom = '0';
 		me.fileviewArea.style.right = '300px';
 		me.fileviewArea.style.overflow = 'auto';
@@ -259,7 +259,7 @@ export default class FileSelector {
 		me.fileinfoArea = document.createElement('div');
 		me.fileinfoArea.style.position = 'absolute';
 		me.fileinfoArea.style.right = '0';
-		me.fileinfoArea.style.top = '40px';
+		me.fileinfoArea.style.top = '50px';
 		me.fileinfoArea.style.bottom = '0';
 		me.fileinfoArea.style.width = '300px';
 		me.fileinfoArea.className = 'mf_fileinfoArea';
