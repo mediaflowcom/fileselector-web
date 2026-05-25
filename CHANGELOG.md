@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
+# 2.4.4 UNRELEASED
+
+### Added
+- French (`fr-FR`) and Italian (`it-IT`) language support, including localized
+  date formatting (day-month-year, 24h) and AI alt-text language picker.
+
+### Changed
+- Month and weekday names are now loaded from the `app.dateTime` translation
+  dictionary instead of hardcoded per-locale switches in `lang.js`. Translations
+  are fetched in parallel with the existing `fileSelector` dictionary and cached
+  in localStorage.
+- Locale handling now uses hyphenated form (`sv-SE`) everywhere. Legacy
+  underscore input (`sv_SE`) is still accepted from host configs and
+  normalized on entry. `lang.locale()` now returns the hyphenated form.
+- Search endpoint fallback list now includes `en-US`, `fr-FR`, and `it-IT`.
+
 # 2.4.3 UNRELEASED
 
 ### Changed
