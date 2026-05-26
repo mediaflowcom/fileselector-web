@@ -4,9 +4,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
-# 2.5.0 2025-05-21
+# 2.5.0 2025-05-21'
+
+### Changed
+- Month and weekday names are now loaded from the `app.dateTime` translation
+  dictionary instead of hardcoded per-locale switches in `lang.js`. Translations
+  are fetched in parallel with the existing `fileSelector` dictionary and cached
+  in localStorage.
+- Locale handling now uses hyphenated form (`sv-SE`) everywhere. Legacy
+  underscore input (`sv_SE`) is still accepted from host configs and
+  normalized on entry. `lang.locale()` now returns the hyphenated form.
+- Search endpoint fallback list now includes `en-US`, `fr-FR`, and `it-IT`.
+- Aligned the file selector UI with the mfui app design system: top
+  bar, search field, folder tree, file grid button group, table
+  header, tabs, primary button, scrollbars, file card radius, font
+  family, and overall border colors.
+- Replaced legacy SVG/PNG transparent checkerboard with two-tone
+  conic-gradient on file thumbnails, file info preview, and cropper.
+- Doubled `.mf-fileinfo` padding for breathing room.
 
 ### Added
+- French (`fr-FR`) and Italian (`it-IT`) language support, including localized
+  date formatting (day-month-year, 24h) and AI alt-text language picker.
 - Include all metadata (custom fields, description, etc.) in the returned success object
 - Include selected crop format by ID to the success object
 - Add a `cropperViewReady` event, fired when the cropper view has been initialized

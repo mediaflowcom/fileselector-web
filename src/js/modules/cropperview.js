@@ -266,7 +266,9 @@ export default {
           { langName: me.lang.translate("FINNISH"), langCode: "fi-FI" },
           { langName: me.lang.translate("GERMAN"), langCode: "de-DE" },
           { langName: me.lang.translate("NORWEGIAN"), langCode: "nb-NO" },
-          { langName: me.lang.translate("SWEDISH"), langCode: "sv-SE" }
+          { langName: me.lang.translate("SWEDISH"), langCode: "sv-SE" },
+          { langName: me.lang.translate("FRENCH"), langCode: "fr-FR" },
+          { langName: me.lang.translate("ITALIAN"), langCode: "it-IT" }
         ]
 
         langList.sort((a, b) => a.langName.localeCompare(b.langName));

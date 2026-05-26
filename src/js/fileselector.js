@@ -57,7 +57,9 @@ export default class FileSelector {
 		}
 	  
 		if(typeof(config.locale) !== 'string' || config.locale.length !== 5)
-		  config.locale = 'sv_SE';
+		  config.locale = 'sv-SE';
+		else
+		  config.locale = config.locale.replace(/_/g, '-'); // normalize legacy 'sv_SE' to 'sv-SE'
 
         (async () => {
           me.folders = []; // folderTree
