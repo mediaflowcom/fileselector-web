@@ -1,13 +1,59 @@
-import { getTranslationFromLegacyKey } from "./translations";
+import { getTranslationFromLegacyKey, getDateTimeTranslation } from "./translations";
+
+const MONTH_KEYS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+// Locales using day-month-year ordering with a space separator (de-DE also uses DMY but with a dot, handled separately).
+const DMY_LOCALES = new Set(['sv-SE', 'nb-NO', 'fi-FI', 'fr-FR', 'it-IT']);
+
+function padTwo(value) {
+  return value < 10 ? '0' + value : '' + value;
+}
+
+function monthName(monthIndex) {
+  return getDateTimeTranslation(MONTH_KEYS[monthIndex]);
+}
 
 /* Mediaflow main JS */
 export default function lang(currentLanguage) {
 
   if (!currentLanguage || currentLanguage.length !== 5)
-    currentLanguage = 'sv_SE';
+    currentLanguage = 'sv-SE';
 
-  if (currentLanguage === 'en_GB') {
-    currentLanguage = 'en_US';
+  currentLanguage = currentLanguage.replace(/_/g, '-');
+
+  if (currentLanguage === 'en-GB') {
+    currentLanguage = 'en-US';
+  }
+
+  function formatDmyDate(dd, withTime) {
+    const daySep = currentLanguage === 'de-DE' ? '. ' : ' ';
+    let s = dd.getDate() + daySep + monthName(dd.getMonth()) + ' ' + dd.getFullYear();
+    if (withTime)
+      s += ' ' + padTwo(dd.getHours()) + ':' + padTwo(dd.getMinutes());
+    return s;
+  }
+
+  function formatUsDate(dd, withTime) {
+    let s = monthName(dd.getMonth()) + ' ' + dd.getDate() + ', ' + dd.getFullYear();
+    if (withTime) {
+      const hours = dd.getHours();
+      const hourDisplay = (hours === 0 || hours === 12) ? 12 : (hours % 12);
+      const suffix = hours < 12 ? ' a.m.' : ' p.m.';
+      s += ', ' + hourDisplay + ':' + padTwo(dd.getMinutes()) + suffix;
+    }
+    return s;
+  }
+
+  function isDmyLocale() {
+    return DMY_LOCALES.has(currentLanguage) || currentLanguage === 'de-DE';
+  }
+
+  function formatDate(d, withTime) {
+    const dd = new Date(d);
+    return isDmyLocale() ? formatDmyDate(dd, withTime) : formatUsDate(dd, withTime);
   }
 
 
@@ -23,404 +69,15 @@ export default function lang(currentLanguage) {
     translateWithParams: function (key, params) {
       return getTranslationFromLegacyKey(key, params);
     },
+
     formatLongDate: function (d) {
-      var dd = new Date(d);
-      var s = '';
-
-      if (currentLanguage === 'sv_SE') {
-        s = dd.getDate() + ' ';
-        switch (dd.getMonth()) {
-          case 0:
-            s += 'januari';
-            break;
-          case 1:
-            s += 'februari';
-            break;
-          case 2:
-            s += 'mars';
-            break;
-          case 3:
-            s += 'april';
-            break;
-          case 4:
-            s += 'maj';
-            break;
-          case 5:
-            s += 'juni';
-            break;
-          case 6:
-            s += 'juli';
-            break;
-          case 7:
-            s += 'augusti';
-            break;
-          case 8:
-            s += 'september';
-            break;
-          case 9:
-            s += 'oktober';
-            break;
-          case 10:
-            s += 'november';
-            break;
-          case 11:
-            s += 'december';
-            break;
-        }
-        s += ' ' + dd.getFullYear() + ' ';
-        if (dd.getHours() < 10)
-          s += '0' + dd.getHours();
-        else
-          s += dd.getHours();
-        if (dd.getMinutes() < 10)
-          s += ':0' + dd.getMinutes();
-        else
-          s += ':' + dd.getMinutes();
-      } else if (currentLanguage === 'nb_NO') {
-        s = dd.getDate() + ' ';
-        switch (dd.getMonth()) {
-          case 0:
-            s += 'januar';
-            break;
-          case 1:
-            s += 'februar';
-            break;
-          case 2:
-            s += 'mars';
-            break;
-          case 3:
-            s += 'april';
-            break;
-          case 4:
-            s += 'mai';
-            break;
-          case 5:
-            s += 'juni';
-            break;
-          case 6:
-            s += 'juli';
-            break;
-          case 7:
-            s += 'august';
-            break;
-          case 8:
-            s += 'september';
-            break;
-          case 9:
-            s += 'oktober';
-            break;
-          case 10:
-            s += 'november';
-            break;
-          case 11:
-            s += 'desember';
-            break;
-        }
-        s += ' ' + dd.getFullYear() + ' ';
-        if (dd.getHours() < 10)
-          s += '0' + dd.getHours();
-        else
-          s += dd.getHours();
-        if (dd.getMinutes() < 10)
-          s += ':0' + dd.getMinutes();
-        else
-          s += ':' + dd.getMinutes();
-      } else if (currentLanguage === 'fi_FI') {
-        s = dd.getDate() + ' ';
-        switch (dd.getMonth()) {
-          case 0:
-            s += 'tammikuuta';
-            break;
-          case 1:
-            s += 'helmikuuta';
-            break;
-          case 2:
-            s += 'maaliskuuta';
-            break;
-          case 3:
-            s += 'huhtikuuta';
-            break;
-          case 4:
-            s += 'toukokuuta';
-            break;
-          case 5:
-            s += 'kesäkuuta';
-            break;
-          case 6:
-            s += 'heinäkuuta';
-            break;
-          case 7:
-            s += 'elokuuta';
-            break;
-          case 8:
-            s += 'syyskuuta';
-            break;
-          case 9:
-            s += 'lokakuuta';
-            break;
-          case 10:
-            s += 'marraskuuta';
-            break;
-          case 11:
-            s += 'joulukuuta';
-            break;
-        }
-        s += ' ' + dd.getFullYear() + ' ';
-        if (dd.getHours() < 10)
-          s += '0' + dd.getHours();
-        else
-          s += dd.getHours();
-        if (dd.getMinutes() < 10)
-          s += ':0' + dd.getMinutes();
-        else
-          s += ':' + dd.getMinutes();
-      } else if (currentLanguage === 'de_DE') {
-        s = dd.getDate() + '. ';
-        switch (dd.getMonth()) {
-          case 0:
-            s += 'Januar';
-            break;
-          case 1:
-            s += 'Februar';
-            break;
-          case 2:
-            s += 'März';
-            break;
-          case 3:
-            s += 'April';
-            break;
-          case 4:
-            s += 'Mai';
-            break;
-          case 5:
-            s += 'Juni';
-            break;
-          case 6:
-            s += 'Juli';
-            break;
-          case 7:
-            s += 'August';
-            break;
-          case 8:
-            s += 'September';
-            break;
-          case 9:
-            s += 'Oktober';
-            break;
-          case 10:
-            s += 'November';
-            break;
-          case 11:
-            s += 'Dezember';
-            break;
-        }
-        s += ' ' + dd.getFullYear() + ' ';
-        if (dd.getHours() < 10)
-          s += '0' + dd.getHours();
-        else
-          s += dd.getHours();
-        if (dd.getMinutes() < 10)
-          s += ':0' + dd.getMinutes();
-        else
-          s += ':' + dd.getMinutes();
-      } else {
-        s = '';
-        switch (dd.getMonth()) {
-          case 0:
-            s += 'January';
-            break;
-          case 1:
-            s += 'February';
-            break;
-          case 2:
-            s += 'March';
-            break;
-          case 3:
-            s += 'April';
-            break;
-          case 4:
-            s += 'May';
-            break;
-          case 5:
-            s += 'June';
-            break;
-          case 6:
-            s += 'July';
-            break;
-          case 7:
-            s += 'August';
-            break;
-          case 8:
-            s += 'September';
-            break;
-          case 9:
-            s += 'October';
-            break;
-          case 10:
-            s += 'November';
-            break;
-          case 11:
-            s += 'December';
-            break;
-        }
-        s += ' ' + dd.getDate() + ', ' + dd.getFullYear() + ', ';
-        if (dd.getHours() == 0 || dd.getHours() == 12)
-          s += '12';
-        else
-          s += (dd.getHours() % 12);
-        if (dd.getMinutes() < 10)
-          s += ':0' + dd.getMinutes();
-        else
-          s += ':' + dd.getMinutes();
-        if (dd.getHours() < 12)
-          s += ' a.m.';
-        else
-          s += ' p.m.';
-      }
-
-      return s;
+      return formatDate(d, true);
     },
+
     formatShortDate: function (d) {
-      var dd = new Date(d);
-      var s = '';
-
-      if (currentLanguage === 'sv_SE') {
-        s = dd.getDate() + ' ';
-        switch (dd.getMonth()) {
-          case 0:
-            s += 'januari';
-            break;
-          case 1:
-            s += 'februari';
-            break;
-          case 2:
-            s += 'mars';
-            break;
-          case 3:
-            s += 'april';
-            break;
-          case 4:
-            s += 'maj';
-            break;
-          case 5:
-            s += 'juni';
-            break;
-          case 6:
-            s += 'juli';
-            break;
-          case 7:
-            s += 'augusti';
-            break;
-          case 8:
-            s += 'september';
-            break;
-          case 9:
-            s += 'oktober';
-            break;
-          case 10:
-            s += 'november';
-            break;
-          case 11:
-            s += 'december';
-            break;
-        }
-        s += ' ' + dd.getFullYear() + ' ';
-        if (dd.getHours() < 10)
-          s += '0' + dd.getHours();
-        else
-          s += dd.getHours();
-        if (dd.getMinutes() < 10)
-          s += ':0' + dd.getMinutes();
-        else
-          s += ':' + dd.getMinutes();
-      } else if (currentLanguage === 'de_DE') {
-        s = dd.getDate() + '. ';
-        switch (dd.getMonth()) {
-          case 0:
-            s += 'Januar';
-            break;
-          case 1:
-            s += 'Februar';
-            break;
-          case 2:
-            s += 'März';
-            break;
-          case 3:
-            s += 'April';
-            break;
-          case 4:
-            s += 'Mai';
-            break;
-          case 5:
-            s += 'Juni';
-            break;
-          case 6:
-            s += 'Juli';
-            break;
-          case 7:
-            s += 'August';
-            break;
-          case 8:
-            s += 'September';
-            break;
-          case 9:
-            s += 'Oktober';
-            break;
-          case 10:
-            s += 'November';
-            break;
-          case 11:
-            s += 'Dezember';
-            break;
-        }
-        s += ' ' + dd.getFullYear();
-
-      } else {
-        s = '';
-        switch (dd.getMonth()) {
-          case 0:
-            s += 'January';
-            break;
-          case 1:
-            s += 'February';
-            break;
-          case 2:
-            s += 'March';
-            break;
-          case 3:
-            s += 'April';
-            break;
-          case 4:
-            s += 'May';
-            break;
-          case 5:
-            s += 'June';
-            break;
-          case 6:
-            s += 'July';
-            break;
-          case 7:
-            s += 'August';
-            break;
-          case 8:
-            s += 'September';
-            break;
-          case 9:
-            s += 'October';
-            break;
-          case 10:
-            s += 'November';
-            break;
-          case 11:
-            s += 'December';
-            break;
-        }
-        s += ' ' + dd.getDate() + ', ' + dd.getFullYear();
-
-      }
-
-      return s;
+      return formatDate(d, false);
     },
+
     humanFileSize: function (bytes) {
       const thresh = 1024; /* i Mediaflow är det alltid 1024 */
       const units = ['kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
@@ -437,10 +94,8 @@ export default function lang(currentLanguage) {
         ++u;
       } while (Math.round(Math.abs(bytes) * r) / r >= thresh && u < units.length - 1);
 
-      if (currentLanguage === 'sv_SE' || currentLanguage === 'de_DE')
-        return bytes.toFixed(1).replace('.', ',') + ' ' + units[u];
-      else
-        return bytes.toFixed(1) + ' ' + units[u];
+      const formatted = isDmyLocale() ? bytes.toFixed(1).replace('.', ',') : bytes.toFixed(1);
+      return formatted + ' ' + units[u];
     }
   };
 }

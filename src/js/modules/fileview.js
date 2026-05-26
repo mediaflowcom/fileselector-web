@@ -90,7 +90,7 @@ export default {
     me.api.get('folder/' + me.folders[idx].id + '/files?fields=id,name,filename,filesize,type,mediumPreview,smallPreview,thumbPreview,mark,uploaded,uploadedby,gdprstatus,gdprtype,mediaid,alttext,alpha',
       function (o) {
         me.files = _this.filterFiles(me, o);
-        _this.showFiles(me, _this, false, selectedFile);
+        _this.showFiles(me, _this, false);
         if (selectedFile) {
           _this.setInitialFile(me, selectedFile, _this);
         }
@@ -104,10 +104,11 @@ export default {
     me.selectedFileId = -1;
     me.searchquery = searchtxt;
 
-    var lang = me.lang.locale().replace('_', '-');
+    var lang = me.lang.locale();
 
     // Fallback to english if language is not supported
-    if (lang !== 'sv-SE' && lang !== 'en-GB' && lang !== 'fi-FI' && lang !== 'nb-NO' && lang !== 'de-DE') {
+    const supportedSearchLangs = ['sv-SE', 'en-GB', 'en-US', 'fi-FI', 'nb-NO', 'de-DE', 'fr-FR', 'it-IT'];
+    if (!supportedSearchLangs.includes(lang)) {
       lang = 'en-GB';
     }
 
@@ -118,7 +119,7 @@ export default {
     };
     me.api.post('search/file?fields=id,name,filename,filesize,type,mediumPreview,smallPreview,thumbPreview,mark,uploaded,uploadedby,gdprstatus,gdprtype,mediaid,alttext',
       postData,
-      function (o) { me.files = _this.filterFiles(me, o); _this.showFiles(me, _this, true, null) },
+      function (o) { me.files = _this.filterFiles(me, o); _this.showFiles(me, _this, true) },
       function (o) { console.error('Error: Failed to get search result data'); })
   },
 
