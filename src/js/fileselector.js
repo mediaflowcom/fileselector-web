@@ -254,7 +254,7 @@ export default class FileSelector {
 		me.fileviewArea.style.top = '50px';
 		me.fileviewArea.style.bottom = '0';
 		me.fileviewArea.style.right = '300px';
-		me.fileviewArea.style.overflow = 'auto';
+		me.fileviewArea.style.overflow = 'hidden';
 		me.fileviewArea.className = 'mf_fileviewArea';
 		me.item.appendChild(me.fileviewArea);
 

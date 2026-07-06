@@ -253,7 +253,7 @@ export default {
     fileInfoData += `<label>${me.lang.translate('FILE_INFO_FILE_TYPE')}</label><div>${me.file.type.description}</div>`;
     fileInfoData += `<label>${me.lang.translate('FILE_INFO_UPLOADED')}</label><div>${_this.escapeHtml(me.lang.formatLongDate(me.file.uploaded))}</div>`;
 
-    if(me.file?.rating > 0 ?? false){
+    if ((me.file?.rating ?? 0) > 0) {
       fileInfoData += `<label>${me.lang.translate('FILE_INFO_RATING')}</label>
         <div class="mf-file-rating">
           <span class="${me.file.rating > 0 ? 'mf-selected' : ''}"></span>
@@ -292,7 +292,7 @@ export default {
     }
 
     //#region License
-    if (me.file.license?.rightsExists > 0 ?? false) {
+    if ((me.file.license?.rightsExists ?? 0) > 0) {
       fileInfoData += `<div class="devider"></div>`;
 
       fileInfoData += `<label>${me.lang.translate('LICENSE_RIGHTS')}</label><div>${me.lang.translate('LICENSE_RIGHTS_'+me.file.license.rightsExists)}</div>`;
