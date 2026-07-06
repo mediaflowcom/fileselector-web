@@ -62,6 +62,26 @@ var dateComparer2 = function (a, b) {
 const FILES_PER_PAGE = 500;
 const FILE_LIST_FIELDS = 'id,name,filename,filesize,type,mediumPreview,smallPreview,thumbPreview,mark,uploaded,uploadedby,gdprstatus,gdprtype,mediaid,alttext,alpha';
 
+const FolderFileSortField = {
+  FILENAME: 'filename',
+  FILESIZE: 'filesize',
+  MARK: 'mark',
+  UPLOADED: 'uploaded',
+};
+
+const SortOrder = {
+  ASC: 'asc',
+  DESC: 'desc',
+};
+
+function buildFolderFilesUrl(me, folderId) {
+  var p = me.folderPagination;
+  return 'folder/' + folderId + '/files?sort=' + me.folderSortField
+    + '&order=' + me.folderSortOrder
+    + '&fields=' + FILE_LIST_FIELDS
+    + '&per_page=' + p.perPage + '&page=' + p.page;
+}
+
 function hasMoreFolderFiles(me) {
   if (!me.folderPagination) {
     return false;
@@ -92,7 +112,7 @@ function createGdprWarndiv(me) {
 function createListViewHeader(me, _this, filesbox) {
   var header = document.createElement('div');
   header.className = 'mf-header';
-  if (me.sortdir) {
+  if (me.folderSortOrder === SortOrder.DESC) {
     header.classList.add('mf-reversed');
   }
   header.style.cursor = 'pointer';
@@ -103,34 +123,34 @@ function createListViewHeader(me, _this, filesbox) {
 
   var col1 = document.createElement('div');
   col1.style.flex = '3 1 100px';
-  col1.className = me.sort == 1 ? 'mf-col mf-filename mf-active' : 'mf-col mf-filename';
+  col1.className = me.folderSortField === FolderFileSortField.FILENAME ? 'mf-col mf-filename mf-active' : 'mf-col mf-filename';
   col1.style.overflowX = 'hidden';
   col1.style.textOverflow = 'ellipsis';
   col1.style.whiteSpace = 'nowrap';
   col1.innerText = me.lang.translate('FILE_INFO_FILE_NAME');
-  col1.addEventListener('click', function () { _this.changeSort(me, _this, 1); }, false);
+  col1.addEventListener('click', function () { _this.changeSort(me, _this, FolderFileSortField.FILENAME); }, false);
   row.appendChild(col1);
 
   var col2 = document.createElement('div');
   col2.style.textAlign = 'right';
   col2.style.flexBasis = '100px';
-  col2.className = me.sort == 2 ? 'mf-col mf-filesize mf-active' : 'mf-col mf-filesize';
+  col2.className = me.folderSortField === FolderFileSortField.FILESIZE ? 'mf-col mf-filesize mf-active' : 'mf-col mf-filesize';
   col2.innerText = me.lang.translate('FILE_INFO_FILE_SIZE');
-  col2.addEventListener('click', function () { _this.changeSort(me, _this, 2); }, false);
+  col2.addEventListener('click', function () { _this.changeSort(me, _this, FolderFileSortField.FILESIZE); }, false);
   row.appendChild(col2);
 
   var col3 = document.createElement('div');
   col3.style.flexBasis = '100px';
-  col3.className = me.sort == 3 ? 'mf-col mf-active' : 'mf-col';
+  col3.className = me.folderSortField === FolderFileSortField.MARK ? 'mf-col mf-active' : 'mf-col';
   col3.innerText = me.lang.translate('FILE_VIEW_MARKING');
-  col3.addEventListener('click', function () { _this.changeSort(me, _this, 3); }, false);
+  col3.addEventListener('click', function () { _this.changeSort(me, _this, FolderFileSortField.MARK); }, false);
   row.appendChild(col3);
 
   var col4 = document.createElement('div');
   col4.style.flexBasis = '100px';
-  col4.className = me.sort == 4 ? 'mf-col mf-date mf-active' : 'mf-col mf-date';
+  col4.className = me.folderSortField === FolderFileSortField.UPLOADED ? 'mf-col mf-date mf-active' : 'mf-col mf-date';
   col4.innerText = me.lang.translate('FILE_INFO_UPLOADED');
-  col4.addEventListener('click', function () { _this.changeSort(me, _this, 4); }, false);
+  col4.addEventListener('click', function () { _this.changeSort(me, _this, FolderFileSortField.UPLOADED); }, false);
   row.appendChild(col4);
 
   header.appendChild(row);
@@ -275,8 +295,8 @@ export default {
   init: function (me, clickCallback) {
     this.clickCallback = clickCallback;
     this.me = me;
-    me.sort = 1;
-    me.sortdir = true;
+    me.folderSortField = FolderFileSortField.FILENAME;
+    me.folderSortOrder = SortOrder.ASC;
     me.previewSize = 1;
     if (me.config.disableLocalStorage !== true) {
       if (window.localStorage) {
@@ -295,6 +315,7 @@ export default {
   },
 
   showFolder: function (me, idx, selectedFile) {
+    me.searchquery = '';
     me.folderPagination = {
       folderIdx: idx,
       page: 1,
@@ -310,8 +331,7 @@ export default {
     var append = options.append || false;
     var selectedFile = options.selectedFile || null;
     var pagination = me.folderPagination;
-    var url = 'folder/' + me.folders[idx].id + '/files?fields=' + FILE_LIST_FIELDS
-      + '&per_page=' + pagination.perPage + '&page=' + pagination.page;
+    var url = buildFolderFilesUrl(me, me.folders[idx].id);
 
     me.api.get(url,
       function (o, totalCount) {
@@ -466,31 +486,18 @@ export default {
   },
 
   sortFiles: function (me, filelist) {
-    var sortFunc = fileNameComparer;
-    switch (me.sort) {
-      case 1:
-        if (me.sortdir)
-          return filelist.sort(fileNameComparer);
-        else
-          return filelist.sort(fileNameComparer2);
-        break;
-      case 2:
-        if (me.sortdir)
-          return filelist.sort(fileSizeComparer);
-        else
-          return filelist.sort(fileSizeComparer2);
-        break;
-      case 3:
-        if (me.sortdir)
-          return filelist.sort(markComparer);
-        else
-          return filelist.sort(markComparer2);
-        break;
-      case 4:
-        if (me.sortdir)
-          return filelist.sort(dateComparer);
-        else
-          return filelist.sort(dateComparer2);
+    var ascending = me.folderSortOrder === SortOrder.ASC;
+    switch (me.folderSortField) {
+      case FolderFileSortField.FILENAME:
+        return filelist.sort(ascending ? fileNameComparer : fileNameComparer2);
+      case FolderFileSortField.FILESIZE:
+        return filelist.sort(ascending ? fileSizeComparer : fileSizeComparer2);
+      case FolderFileSortField.MARK:
+        return filelist.sort(ascending ? markComparer : markComparer2);
+      case FolderFileSortField.UPLOADED:
+        return filelist.sort(ascending ? dateComparer : dateComparer2);
+      default:
+        return filelist.sort(ascending ? fileNameComparer : fileNameComparer2);
     }
   },
 
@@ -529,11 +536,22 @@ export default {
     return f;
   },
 
-  changeSort: function (me, _this, sort) {
-    if (me.sort != sort)
-      me.sort = sort;
-    else me.sortdir = !me.sortdir;
-    _this.showFiles(me, _this);
+  changeSort: function (me, _this, sortField) {
+    if (me.folderSortField !== sortField) {
+      me.folderSortField = sortField;
+      me.folderSortOrder = SortOrder.ASC;
+    } else {
+      me.folderSortOrder = me.folderSortOrder === SortOrder.ASC ? SortOrder.DESC : SortOrder.ASC;
+    }
+
+    if (me.folderPagination && !me.searchquery) {
+      me.folderPagination.page = 1;
+      me.folderPagination.loading = true;
+      _this.loadFolderPage(me, me.folderPagination.folderIdx, { append: false });
+      return;
+    }
+
+    _this.showFiles(me, _this, true);
   },
 
   initLazyLoading: function () {
@@ -568,7 +586,10 @@ export default {
     me.fileviewArea.innerHTML = '';
     me.fileinfoArea.innerHTML = '';
 
-    me.files = _this.sortFiles(me, me.files);
+    // Only for search results
+    if (isSearch) {
+      me.files = _this.sortFiles(me, me.files);
+    }
 
     var smallWindow = false;
 
@@ -751,22 +772,6 @@ export default {
       me.files[idx].elem.className = 'mf-file mf-selected';
       _this.clickCallback(me, idx, false);
     }
-  },
-
-  sortClick: function (me, _this, sortcol) {
-    //console.log('sorting by ' + sortcol);
-    switch (sortcol) {
-      case 1:
-        me.files = me.files.sort(fileNameComparer);
-        break;
-      case 2:
-        me.files = me.files.sort(fileSizeComparer);
-        break;
-      case 2:
-        me.files = me.files.sort(fileSizeComparer);
-        break;
-    }
-    _this.showFiles(me, _this);
   }
 
 };
