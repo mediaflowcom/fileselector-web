@@ -458,6 +458,7 @@ export default {
     _this.updateFolderHeader(me);
     _this.updateLoadMoreButton(me, _this);
     _this.initLazyLoading();
+    _this.highlightSelectedFileInList(me);
   },
 
   showSearchResults: function (me, searchtxt, includeAiSearch) {
@@ -744,6 +745,29 @@ export default {
     }
 
     this.initLazyLoading();
+
+    if (!isSearch) {
+      _this.highlightSelectedFileInList(me);
+    }
+  },
+  highlightSelectedFileInList: function (me) {
+    if (!me.selectedFileId || me.selectedFileId < 0) {
+      return;
+    }
+
+    var i, idx = -1;
+    for (i = 0; i < me.files.length; i++) {
+      if (me.files[i].elem) {
+        me.files[i].elem.classList.remove('mf-selected');
+      }
+      if (me.files[i].id === me.selectedFileId) {
+        idx = i;
+      }
+    }
+
+    if (idx >= 0 && me.files[idx].elem) {
+      me.files[idx].elem.classList.add('mf-selected');
+    }
   },
   fileClick: function (me, e, _elem, _this, issearch) {
     if (!_elem || !_elem.dataset || typeof (_elem.dataset.idx) !== 'string')
@@ -757,21 +781,28 @@ export default {
     _this.clickCallback(me, idx, issearch);
   },
   setInitialFile: function (me, id, _this) {
-    if (typeof id === 'number')
-      me.selectedFileId = id;
-    else
-      me.selectedFileId = id.id;
+    var fileId = typeof id === 'number' ? id : id.id;
+    me.selectedFileId = fileId;
+
     var idx = -1;
     for (var i = 0; i < me.files.length; i++) {
-      if (me.files[i].id === id) {
+      if (me.files[i].id === fileId) {
         idx = i;
         break;
       }
     }
+
     if (idx >= 0) {
       me.files[idx].elem.className = 'mf-file mf-selected';
       _this.clickCallback(me, idx, false);
+      return;
     }
+
+    _this.loadInitialFileById(me, _this, fileId);
+  },
+
+  loadInitialFileById: function (me, _this, fileId) {
+    _this.clickCallback(me, -1, false, fileId);
   }
 
 };
