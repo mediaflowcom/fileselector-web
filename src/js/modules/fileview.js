@@ -605,7 +605,7 @@ export default {
         smallPreviews.addEventListener('click', function () {
           if (me.config.disableLocalStorage !== true) {
             if (window.localStorage) {
-              localStorage.setItem('MF.previewSize', 0);
+              localStorage.setItem('MF.previewSize', '0');
             }
           }
           me.previewSize = 0;
@@ -613,8 +613,10 @@ export default {
           me.item.dataset.activePreviewType = "small";
         }, false);
         smallPreviewsIcon.addEventListener('click', function () {
-          //console.log('click')
-          this.nextSibling.click();
+          var sibling = this.nextSibling;
+          if (sibling instanceof HTMLElement) {
+            sibling.click();
+          }
         }, false);
       }
       smallPreviews.innerText = this.me.lang.translate('FILE_VIEW_SMALLIMAGES');
@@ -636,7 +638,7 @@ export default {
         largePreviews.addEventListener('click', function () {
           if (me.config.disableLocalStorage !== true) {
             if (window.localStorage) {
-              localStorage.setItem('MF.previewSize', 1);
+              localStorage.setItem('MF.previewSize', '1');
             }
           }
           me.previewSize = 1;
@@ -644,7 +646,10 @@ export default {
           me.item.dataset.activePreviewType = "large";
         }, false);
         largePreviewsIcon.addEventListener('click', function () {
-          this.nextSibling.click();
+          var sibling = this.nextSibling;
+          if (sibling instanceof HTMLElement) {
+            sibling.click();
+          }
         }, false);
       }
       sizeSelector.appendChild(largePreviewsIcon);
@@ -665,7 +670,7 @@ export default {
         noPreviews.addEventListener('click', function () {
           if (me.config.disableLocalStorage !== true) {
             if (window.localStorage) {
-              localStorage.setItem('MF.previewSize', 2);
+              localStorage.setItem('MF.previewSize', '2');
             }
           }
           me.previewSize = 2;
@@ -673,7 +678,10 @@ export default {
           me.item.dataset.activePreviewType = "list";
         }, false);
         noPreviewsIcon.addEventListener('click', function () {
-          this.nextSibling.click();
+          var sibling = this.nextSibling;
+          if (sibling instanceof HTMLElement) {
+            sibling.click();
+          }
         }, false);
       }
       noPreviews.innerText = this.me.lang.translate('FILE_VIEW_LISTVIEW');
