@@ -59,7 +59,7 @@ var dateComparer2 = function (a, b) {
     return -1;
 };
 
-const FILES_PER_PAGE = 10;
+const FILES_PER_PAGE = 500;
 const FILE_LIST_FIELDS = 'id,name,filename,filesize,type,mediumPreview,smallPreview,thumbPreview,mark,uploaded,uploadedby,gdprstatus,gdprtype,mediaid,alttext,alpha';
 
 function hasMoreFolderFiles(me) {
@@ -389,7 +389,7 @@ export default {
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'mf-load-more-btn';
-    btn.innerText = me.lang.translate('FILE_VIEW_LOAD_MORE');
+    btn.innerText = me.lang.translate('FILE_VIEW_SHOW_MORE');
     btn.addEventListener('click', function () {
       _this.loadMoreFolderFiles(me, _this);
     }, false);
@@ -414,7 +414,7 @@ export default {
       btn.innerText = me.lang.translate('FILE_VIEW_FETCHING_DATA');
     } else {
       btn.disabled = false;
-      btn.innerText = me.lang.translate('FILE_VIEW_LOAD_MORE');
+      btn.innerText = me.lang.translate('FILE_VIEW_SHOW_MORE');
     }
   },
 
@@ -716,11 +716,8 @@ export default {
     me.fileviewArea.appendChild(filesbox);
 
     if (!isSearch) {
-      //filesbox.appendChild(_this.createLoadMoreFooter(me, _this));
-      //me.fileviewArea.appendChild(_this.createLoadMoreFooter(me, _this) ?? null);
       var loadMoreFooter = _this.createLoadMoreFooter(me, _this);
       if (loadMoreFooter) {
-        //me.fileviewArea.appendChild(loadMoreFooter);
         filesbox.appendChild(loadMoreFooter);
       }
     }
