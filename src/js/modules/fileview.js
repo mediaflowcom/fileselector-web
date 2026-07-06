@@ -408,6 +408,10 @@ export default {
         if (append) {
           pagination.page--;
           _this.updateLoadMoreButton(me, _this);
+        } else if (options.revertSort) {
+          me.folderSortField = options.revertSort.field;
+          me.folderSortOrder = options.revertSort.order;
+          _this.showFiles(me, _this, false);
         }
         console.error('Error: Failed to get folder data');
       },
@@ -583,6 +587,9 @@ export default {
   },
 
   changeSort: function (me, _this, sortField) {
+    var previousSortField = me.folderSortField;
+    var previousSortOrder = me.folderSortOrder;
+
     if (me.folderSortField !== sortField) {
       me.folderSortField = sortField;
       me.folderSortOrder = SortOrder.ASC;
@@ -593,7 +600,13 @@ export default {
     if (me.folderPagination && !me.searchquery) {
       me.folderPagination.page = 1;
       me.folderPagination.loading = true;
-      _this.loadFolderPage(me, me.folderPagination.folderIdx, { append: false });
+      _this.loadFolderPage(me, me.folderPagination.folderIdx, {
+        append: false,
+        revertSort: {
+          field: previousSortField,
+          order: previousSortOrder
+        }
+      });
       return;
     }
 
