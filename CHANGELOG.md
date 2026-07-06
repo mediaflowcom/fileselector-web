@@ -4,7 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
-# 2.5.0 2025-05-21'
+# 2.6.0 UNRELEASED
+
+### Added
+- Pagination. 500 files per page.
+
+### Changed
+- Just scrolling the file view, header "sticky".
+### Fixed
+- Some minor code bugs.
+
+# 2.5.0 2025-05-21
 
 ### Changed
 - Month and weekday names are now loaded from the `app.dateTime` translation
