@@ -1,4 +1,6 @@
 /* Mediaflow File Selector */
+import { hasAiLabel, getAiLabelTooltip, aiLabelIcon } from './../services/ailabel';
+
 var fileNameComparer = function (a, b) {
   if (a.filename > b.filename)
     return 1;
@@ -87,7 +89,7 @@ export default {
     var _this = this;
     me.selectedFileId = -1;
     me.selectedFolderId = me.folders[idx].id;
-    me.api.get('folder/' + me.folders[idx].id + '/files?fields=id,name,filename,filesize,type,mediumPreview,smallPreview,thumbPreview,mark,uploaded,uploadedby,gdprstatus,gdprtype,mediaid,alttext,alpha',
+    me.api.get('folder/' + me.folders[idx].id + '/files?fields=id,name,filename,filesize,type,mediumPreview,smallPreview,thumbPreview,mark,uploaded,uploadedby,gdprstatus,gdprtype,mediaid,alttext,alpha,aiContent',
       function (o) {
         me.files = _this.filterFiles(me, o);
         _this.showFiles(me, _this, false);
@@ -117,7 +119,7 @@ export default {
       lang: lang,
       ai: includeAiSearch
     };
-    me.api.post('search/file?fields=id,name,filename,filesize,type,mediumPreview,smallPreview,thumbPreview,mark,uploaded,uploadedby,gdprstatus,gdprtype,mediaid,alttext',
+    me.api.post('search/file?fields=id,name,filename,filesize,type,mediumPreview,smallPreview,thumbPreview,mark,uploaded,uploadedby,gdprstatus,gdprtype,mediaid,alttext,aiContent',
       postData,
       function (o) { me.files = _this.filterFiles(me, o); _this.showFiles(me, _this, true) },
       function (o) { console.error('Error: Failed to get search result data'); })
@@ -219,6 +221,25 @@ export default {
     lazyLoadDivs.forEach(div => {
       observer.observe(div);
     });
+  },
+
+  createAiBadge: function (file) {
+    if (!hasAiLabel(file))
+      return null;
+
+    var badge = document.createElement('span');
+    badge.className = this.hasGdprWarning(file) ? 'mf-ai-label mf-ai-label-beside-gdpr' : 'mf-ai-label';
+    badge.innerHTML = aiLabelIcon;
+    badge.title = getAiLabelTooltip(file);
+    return badge;
+  },
+
+  hasGdprWarning: function (file) {
+    if (file.gdprStatus == undefined)
+      return false;
+
+    var status = file.gdprStatus.toUpperCase();
+    return status == 'MISSING_CONSENT' || status == 'INVALID_CONSENT' || status == 'AWAIT_CONSENT';
   },
 
   showFiles: function (me, _this, isSearch) {
@@ -353,6 +374,9 @@ export default {
         col1.style.textOverflow = 'ellipsis';
         col1.style.whiteSpace = 'nowrap';
         col1.innerText = me.files[i].filename;
+        var aiBadge = _this.createAiBadge(me.files[i]);
+        if (aiBadge)
+          col1.appendChild(aiBadge);
 
         row.appendChild(col1);
 
@@ -448,6 +472,9 @@ export default {
             me.files[i].elem.appendChild(spanVideoFileType);
           }
           //#endregion
+          const aiBadge = _this.createAiBadge(me.files[i]);
+          if (aiBadge)
+            me.files[i].elem.appendChild(aiBadge);
 
           const imgWrapper = Object.assign(document.createElement("div"), {
             className: `mf-img-wrapper ${me.files[i].alpha ? "mf-file-alpha" : ""}`
@@ -528,6 +555,9 @@ export default {
             me.files[i].elem.appendChild(spanVideoFileType);
           }
           //#endregion
+          const aiBadge = _this.createAiBadge(me.files[i]);
+          if (aiBadge)
+            me.files[i].elem.appendChild(aiBadge);
 
           const imgWrapper = Object.assign(document.createElement("div"), {
             className: `mf-img-wrapper ${me.files[i].alpha ? "mf-file-alpha" : ""}`

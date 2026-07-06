@@ -1,6 +1,7 @@
 /* Mediaflow File Selector */
 
 import {getTranslation as translate} from "./../services/translations";
+import { hasAiLabel, getAiLabelHeading, getAiLabelTitle } from "./../services/ailabel";
 
 export default {
   me:{},
@@ -235,7 +236,7 @@ export default {
       }
     }
     //#endregion
-    
+
     fileInfoData += `<label>${translate("fileInfo", "fileName")}</label><div>${_this.escapeHtml(me.file.filename)}</div>`;
     if (me.file.name?.length > 0) {
       fileInfoData += `<label>${translate("fileInfo", "name")}</label><div>${_this.escapeHtml(me.file.name)}</div>`;
@@ -252,6 +253,15 @@ export default {
     
     fileInfoData += `<label>${me.lang.translate('FILE_INFO_FILE_TYPE')}</label><div>${me.file.type.description}</div>`;
     fileInfoData += `<label>${me.lang.translate('FILE_INFO_UPLOADED')}</label><div>${_this.escapeHtml(me.lang.formatLongDate(me.file.uploaded))}</div>`;
+
+    if (hasAiLabel(me.file)) {
+      const aiDescription = me.file.aiContent?.description ?? '';
+      fileInfoData += `<label>${getAiLabelTitle()}</label>
+      <div>
+        ${_this.escapeHtml(getAiLabelHeading(me.file))}
+        ${aiDescription ? `<span class="mf-ai-label-description">${_this.escapeHtml(aiDescription)}</span>` : ''}
+      </div>`;
+    }
 
     if(me.file?.rating > 0 ?? false){
       fileInfoData += `<label>${me.lang.translate('FILE_INFO_RATING')}</label>

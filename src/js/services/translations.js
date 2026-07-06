@@ -1,13 +1,17 @@
 let translations = {};
 let dateTimeTranslations = {};
+let damInfoTranslations = {};
 const defaultLangCode = 'sv-SE';
 const cacheTime = 1000 * 60 * 60 * 3; // 3 hours
 const translationBase = 'fileSelector';
 const dateTimeTranslationBase = 'app.dateTime';
+const damInfoTranslationBase = 'app.damInfo';
 const translationSectionsMappings = {CROPPER_: 'cropper', FILE_INFO_: 'fileInfo', FILE_VIEW_: 'fileView'};
 const validLanguageCodes = ['en-GB', 'en-US', 'sv-SE', 'de-DE', 'nb-NO', 'fi-FI', 'fr-FR', 'it-IT'];
 const localStorageName = 'fsTranslations';
 const dateTimeLocalStorageName = 'fsDateTimeTranslations';
+const damInfoLocalStorageName = 'fsDamInfoTranslations';
+const damInfoFallbacks = {aiLabel: 'AI label', aiLabelCreated: 'Created by AI', aiLabelModified: 'Modified by AI'};
 let currentLangCode = defaultLangCode;
 
 export async function initTranslations(locale) {
@@ -17,6 +21,7 @@ export async function initTranslations(locale) {
 
   let _translations = getWithExpiry(localStorageName);
   let _dateTimeTranslations = getWithExpiry(dateTimeLocalStorageName);
+  let _damInfoTranslations = getWithExpiry(damInfoLocalStorageName);
 
   const loadPromises = [];
 
@@ -36,10 +41,19 @@ export async function initTranslations(locale) {
     );
   }
 
+  if (_damInfoTranslations === null || _damInfoTranslations[currentLangCode] === undefined) {
+    loadPromises.push(
+      loadDictionary(currentLangCode, damInfoTranslationBase, damInfoLocalStorageName).then((result) => {
+        _damInfoTranslations = result;
+      })
+    );
+  }
+
   await Promise.all(loadPromises);
 
   translations = _translations;
   dateTimeTranslations = _dateTimeTranslations;
+  damInfoTranslations = _damInfoTranslations;
 }
 
 /** Get the current language code
@@ -66,6 +80,17 @@ export function getTranslationFromLegacyKey(key, params = null) {
 export function getDateTimeTranslation(key) {
   return dateTimeTranslations[currentLangCode]?.[key]
     ?? dateTimeTranslations[defaultLangCode]?.[key]
+    ?? key;
+}
+
+/** Get a translation from the shared app.damInfo dictionary.
+ * @param {string} key - damInfo key (e.g. 'aiLabelCreated').
+ * @returns {string} Translation for the current language, falling back to the default language, then a hardcoded English fallback.
+ */
+export function getDamInfoTranslation(key) {
+  return damInfoTranslations[currentLangCode]?.[key]
+    ?? damInfoTranslations[defaultLangCode]?.[key]
+    ?? damInfoFallbacks[key]
     ?? key;
 }
 
