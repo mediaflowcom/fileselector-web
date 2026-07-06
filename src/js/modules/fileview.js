@@ -82,12 +82,54 @@ function buildFolderFilesUrl(me, folderId) {
     + '&per_page=' + p.perPage + '&page=' + p.page;
 }
 
+function hasClientFileFilters(me) {
+  if (typeof me.config.limitFileType === 'string' && me.config.limitFileType !== '') {
+    return true;
+  }
+  if (me.config.hideUnsafeGDPR === true) {
+    return true;
+  }
+  if (me.config.hideUnassignedGDPR === true) {
+    return true;
+  }
+  return false;
+}
+
+function updateFolderPaginationTotals(me, pagination, rawBatchLength, append) {
+  if (!append) {
+    pagination.rawFetchedCount = rawBatchLength;
+  } else {
+    pagination.rawFetchedCount = (pagination.rawFetchedCount || 0) + rawBatchLength;
+  }
+
+  var apiTotal = pagination.apiTotalCount;
+  if (apiTotal == null || isNaN(apiTotal)) {
+    pagination.totalCount = me.files.length;
+    return;
+  }
+
+  var apiHasMore = pagination.page * pagination.perPage < apiTotal;
+  if (!hasClientFileFilters(me) || !apiHasMore) {
+    pagination.totalCount = apiHasMore ? apiTotal : me.files.length;
+    return;
+  }
+
+  if (!pagination.rawFetchedCount) {
+    pagination.totalCount = me.files.length;
+    return;
+  }
+
+  var ratio = me.files.length / pagination.rawFetchedCount;
+  pagination.totalCount = Math.max(me.files.length, Math.round(apiTotal * ratio));
+}
+
 function hasMoreFolderFiles(me) {
   if (!me.folderPagination) {
     return false;
   }
   var p = me.folderPagination;
-  return p.page * p.perPage < p.totalCount;
+  var apiTotal = p.apiTotalCount != null ? p.apiTotalCount : p.totalCount;
+  return p.page * p.perPage < apiTotal;
 }
 
 function createGdprWarndiv(me) {
@@ -320,6 +362,8 @@ export default {
       folderIdx: idx,
       page: 1,
       perPage: FILES_PER_PAGE,
+      apiTotalCount: 0,
+      rawFetchedCount: 0,
       totalCount: 0,
       loading: false
     };
@@ -344,10 +388,11 @@ export default {
           me.selectedFolderId = me.folders[idx].id;
         }
         if (totalCount != null && !isNaN(totalCount)) {
-          pagination.totalCount = totalCount;
+          pagination.apiTotalCount = totalCount;
         } else if (!append) {
-          pagination.totalCount = me.files.length;
+          pagination.apiTotalCount = me.files.length;
         }
+        updateFolderPaginationTotals(me, pagination, o.length, append);
         pagination.loading = false;
         if (append) {
           _this.appendFiles(me, _this, filtered, false);
