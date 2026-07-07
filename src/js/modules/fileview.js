@@ -1,5 +1,5 @@
 /* Mediaflow File Selector */
-import { hasAiLabel, getAiLabelTooltip, aiLabelIcon } from './../services/ailabel';
+import { hasAiLabel, getAiLabelTooltip, aiLabelIcon } from './../helpers/ailabel';
 
 var fileNameComparer = function (a, b) {
   if (a.filename > b.filename)

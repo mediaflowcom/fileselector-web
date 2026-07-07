@@ -1,7 +1,7 @@
 /* Mediaflow File Selector */
 
 import {getTranslation as translate} from "./../services/translations";
-import { hasAiLabel, getAiLabelHeading, getAiLabelTitle } from "./../services/ailabel";
+import { hasAiLabel, getAiLabelHeading, getAiLabelTitle } from "./../helpers/ailabel";
 
 export default {
   me:{},

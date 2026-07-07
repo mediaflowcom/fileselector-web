@@ -1,4 +1,4 @@
-import { getDamInfoTranslation } from './translations';
+import { getDamInfoTranslation } from '../services/translations';
 
 export const aiLabelIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
   <path d="M3.58,13.02h-1.88L4.85,3.43h2.17l3.13,9.58h-1.98l-.73-2.47h-3.13l-.73,2.47h0ZM5.93,5.27h-.08l-1.15,3.88h2.38l-1.15-3.88ZM11.86,13.02V3.43h1.84v9.58h-1.84Z"/>
