@@ -128,8 +128,14 @@ function hasMoreFolderFiles(me) {
     return false;
   }
   var p = me.folderPagination;
-  var apiTotal = p.apiTotalCount != null ? p.apiTotalCount : p.totalCount;
-  return p.page * p.perPage < apiTotal;
+  if (p.apiTotalCount != null && !isNaN(p.apiTotalCount)) {
+    return p.page * p.perPage < p.apiTotalCount;
+  }
+  return (p.lastRawBatchLength || 0) >= p.perPage;
+}
+
+function isSearchView(me) {
+  return typeof me.searchquery === 'string' && me.searchquery.length > 0;
 }
 
 function createGdprWarndiv(me) {
@@ -337,6 +343,9 @@ export default {
   init: function (me, clickCallback) {
     this.clickCallback = clickCallback;
     this.me = me;
+    this.lazyLoadObserver = null;
+    this.lazyLoadObserved = new WeakSet();
+    this.lazyLoadRoot = null;
     me.folderSortField = FolderFileSortField.FILENAME;
     me.folderSortOrder = SortOrder.ASC;
     me.previewSize = 1;
@@ -362,8 +371,9 @@ export default {
       folderIdx: idx,
       page: 1,
       perPage: FILES_PER_PAGE,
-      apiTotalCount: 0,
+      apiTotalCount: null,
       rawFetchedCount: 0,
+      lastRawBatchLength: 0,
       totalCount: 0,
       loading: false
     };
@@ -389,9 +399,8 @@ export default {
         }
         if (totalCount != null && !isNaN(totalCount)) {
           pagination.apiTotalCount = totalCount;
-        } else if (!append) {
-          pagination.apiTotalCount = me.files.length;
         }
+        pagination.lastRawBatchLength = o.length;
         updateFolderPaginationTotals(me, pagination, o.length, append);
         pagination.loading = false;
         if (append) {
@@ -614,33 +623,56 @@ export default {
   },
 
   initLazyLoading: function () {
+    var _this = this;
     const rootElement = this.me.config.rootElement || document;
-    const lazyLoadDivs = rootElement.querySelectorAll('.lazy-load-background');
     const scrollContainer = rootElement.querySelector('.mf-files-box');
+    if (!scrollContainer) {
+      return;
+    }
 
-    const lazyLoad = (entries, observer) => {
-      entries.forEach(entry => {
+    const lazyLoad = function (entries, observer) {
+      entries.forEach(function (entry) {
         if (entry.isIntersecting) {
           const div = entry.target;
           const bgImage = div.getAttribute('data-background-src');
-          div.style.backgroundImage = `url(${bgImage})`;
+          div.style.backgroundImage = 'url(' + bgImage + ')';
           observer.unobserve(div);
+          _this.lazyLoadObserved.delete(div);
         }
       });
     };
 
-    const observer = new IntersectionObserver(lazyLoad, {
-      root: scrollContainer,
-      rootMargin: '0px',
-      threshold: 0
-    });
+    if (!this.lazyLoadObserver || this.lazyLoadRoot !== scrollContainer) {
+      if (this.lazyLoadObserver) {
+        this.lazyLoadObserver.disconnect();
+      }
+      this.lazyLoadObserved = new WeakSet();
+      this.lazyLoadRoot = scrollContainer;
+      this.lazyLoadObserver = new IntersectionObserver(lazyLoad, {
+        root: scrollContainer,
+        rootMargin: '0px',
+        threshold: 0
+      });
+    }
 
-    lazyLoadDivs.forEach(div => {
-      observer.observe(div);
+    const lazyLoadDivs = rootElement.querySelectorAll('.lazy-load-background');
+    lazyLoadDivs.forEach(function (div) {
+      if (_this.lazyLoadObserved.has(div)) {
+        return;
+      }
+      if (div.style.backgroundImage) {
+        return;
+      }
+      _this.lazyLoadObserved.add(div);
+      _this.lazyLoadObserver.observe(div);
     });
   },
 
   showFiles: function (me, _this, isSearch) {
+    if (isSearch !== true) {
+      isSearch = isSearchView(me);
+    }
+
     var warndiv = createGdprWarndiv(me);
     me.fileviewArea.innerHTML = '';
     me.fileinfoArea.innerHTML = '';
