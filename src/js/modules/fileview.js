@@ -606,7 +606,12 @@ export default {
       me.folderSortOrder = me.folderSortOrder === SortOrder.ASC ? SortOrder.DESC : SortOrder.ASC;
     }
 
-    if (me.folderPagination && !me.searchquery) {
+    if (me.folderPagination && !isSearchView(me)) {
+      if (!hasMoreFolderFiles(me)) {
+        me.files = _this.sortFiles(me, me.files);
+        _this.showFiles(me, _this, false);
+        return;
+      }
       me.folderPagination.page = 1;
       me.folderPagination.loading = true;
       _this.loadFolderPage(me, me.folderPagination.folderIdx, {
