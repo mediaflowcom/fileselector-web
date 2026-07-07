@@ -375,7 +375,7 @@ export default {
       rawFetchedCount: 0,
       lastRawBatchLength: 0,
       totalCount: 0,
-      loading: false
+      loading: true
     };
     this.loadFolderPage(me, idx, { append: false, selectedFile: selectedFile });
   },
@@ -440,10 +440,10 @@ export default {
   },
 
   getFolderHeaderText: function (me) {
-    if (me.files.length === 0) {
+    var totalCount = me.folderPagination ? me.folderPagination.totalCount : me.files.length;
+    if (me.files.length === 0 && !hasMoreFolderFiles(me) && totalCount === 0) {
       return me.lang.translate('FOLDER_NOFILES');
     }
-    var totalCount = me.folderPagination ? me.folderPagination.totalCount : me.files.length;
     if (totalCount === 1) {
       return me.lang.translate('FOLDER_HDR_S');
     }
@@ -596,6 +596,10 @@ export default {
   },
 
   changeSort: function (me, _this, sortField) {
+    if (me.folderPagination && me.folderPagination.loading) {
+      return;
+    }
+
     var previousSortField = me.folderSortField;
     var previousSortOrder = me.folderSortOrder;
 
