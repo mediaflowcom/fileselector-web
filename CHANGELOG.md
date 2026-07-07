@@ -14,8 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from the shared `app.damInfo` dictionary (`aiLabel` / `aiLabelCreated` /
   `aiLabelModified`), fetched and cached like the existing `app.dateTime`
   dictionary.
+- Pagination. 500 files per page.
 
-# 2.5.0 2025-05-21'
+### Changed
+- Just scrolling the file view, header "sticky".
+### Fixed
+- Some minor code bugs.
+
+# 2.5.0 2025-05-21
 
 ### Changed
 - Month and weekday names are now loaded from the `app.dateTime` translation

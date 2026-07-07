@@ -94,7 +94,7 @@ export default function MFAPI(baseURI, config)
     return loadingPromise;
   }
 
-  function loadXHR(method, endpoint, postdata, success, fail, timeout)
+  function loadXHR(method, endpoint, postdata, success, fail, timeout, readTotalCount)
   {
     var xhr = new XMLHttpRequest();
     if(endpoint==null || endpoint=='') {
@@ -133,7 +133,12 @@ export default function MFAPI(baseURI, config)
           if(xhr.status === 200 || xhr.status === 201) {
             try {
               var o = JSON.parse(xhr.responseText);
-              setTimeout(function(){success(o);}, 0);
+              var totalCount = null;
+              if (readTotalCount === true) {
+                var totalCountHeader = xhr.getResponseHeader('X-Total-Count');
+                totalCount = totalCountHeader ? parseInt(totalCountHeader, 10) : null;
+              }
+              setTimeout(function(){success(o, totalCount);}, 0);
             } catch (e) {
               fail('ERR:' + method + ',JSON');
             }
@@ -153,8 +158,8 @@ export default function MFAPI(baseURI, config)
   }
 
   return {
-    get: function(endpoint, success, fail, timeout) {
-      loadXHR('GET', endpoint, null, success, fail, timeout);
+    get: function(endpoint, success, fail, timeout, readTotalCount) {
+      loadXHR('GET', endpoint, null, success, fail, timeout, readTotalCount === true);
     },
     post: function(endpoint, postdata, success, fail, timeout) {
       loadXHR('POST', endpoint, postdata, success, fail, timeout);

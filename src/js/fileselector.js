@@ -97,10 +97,12 @@ export default class FileSelector {
 		fileview.showFolder(me, idx,null);
 	}
   
-	fileClick(me, idx, issearch) {
-		if(typeof(me.config.events)==='function')
-		  me.config.events('fileClick', {id:me.files[idx].id, name:me.files[idx].name, mediaId:me.files[idx].mediaId, isSearch:issearch, type:me.files[idx].type.type});
-		me.fileinfo.showInfo(me, idx);
+	fileClick(me, idx, issearch, fileId) {
+		var id = fileId != null ? fileId : me.files[idx].id;
+		var file = idx >= 0 ? me.files[idx] : { id: id };
+		if(typeof(me.config.events) === 'function')
+		  me.config.events('fileClick', {id: file.id, name: file.name, mediaId: file.mediaId, isSearch: issearch, type: file.type ? file.type.type : undefined});
+		me.fileinfo.showInfo(me, id);
 		me.item.dataset.activeView = "file"; // change activeview for mobile
 	}
 
@@ -254,7 +256,7 @@ export default class FileSelector {
 		me.fileviewArea.style.top = '50px';
 		me.fileviewArea.style.bottom = '0';
 		me.fileviewArea.style.right = '300px';
-		me.fileviewArea.style.overflow = 'auto';
+		me.fileviewArea.style.overflow = 'hidden';
 		me.fileviewArea.className = 'mf_fileviewArea';
 		me.item.appendChild(me.fileviewArea);
 
