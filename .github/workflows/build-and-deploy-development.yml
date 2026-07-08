@@ -1,0 +1,109 @@
+name: Deploy to development (auto)
+on:
+  push:
+    branches:
+      - develop
+
+env:
+  MF_SERVICE_NAME: fileselector-web
+  MF_CONTAINER_NAME: "dockerhub.mediaflow.com/fileselector-web_dev"
+
+jobs:
+  setup:
+    name: Setup
+    runs-on: mf-runner
+    environment: development
+    container:
+      image: dockerhub.mediaflow.com/docker-git:latest
+      credentials:
+        username: mediaflow
+        password: ${{ secrets.MEDIAFLOW_DOCKERHUB_PASSWORD }}
+      options: -v /run/docker/docker.sock:/run/docker/docker.sock
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get deploy version
+        id: mf-version
+        uses: mediaflowcom/git-action-version@v1
+        with:
+          last-commit-message: ${{ github.event.head_commit.message }}
+    outputs:
+      mf-version: ${{steps.mf-version.outputs.version}}
+      mf-message: ${{steps.mf-version.outputs.last-commit-message}}
+
+  build_docker:
+    name: "Build docker image"
+    needs: [setup]
+    runs-on: mf-runner
+    environment: development
+
+    env:
+      DOCKER_HOST: unix:///run/docker/docker.sock
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to dockerhub
+        run: echo -n ${{ secrets.MEDIAFLOW_DOCKERHUB_PASSWORD }} | docker login -u mediaflow --password-stdin dockerhub.mediaflow.com
+
+      - name: Build docker
+        run: docker build --build-arg BUILDTARGET=develop -t ${{ env.MF_CONTAINER_NAME }}:${{ needs.setup.outputs.mf-version }} -t ${{ env.MF_CONTAINER_NAME }}:latest .
+
+      - name: Push to dockerhub
+        run: docker push --all-tags ${{ env.MF_CONTAINER_NAME }}
+
+  update_k8s_manifest:
+    name: Update K8s manifest for ArgoCD
+    runs-on: mf-runner
+    needs: [setup, build_docker]
+    environment: development
+
+    container:
+      image: dockerhub.mediaflow.com/docker-git:latest
+      credentials:
+        username: mediaflow
+        password: ${{ secrets.MEDIAFLOW_DOCKERHUB_PASSWORD }}
+
+    steps:
+      - name: Checkout ops-k8s-configuration-files repo
+        uses: actions/checkout@v4
+        with:
+          repository: mediaflowcom/ops-k8s-configuration-files
+          token: ${{ secrets.OPS_REPO_PAT }}
+          ref: main
+
+      - name: Update image tag in manifest
+        run: |
+          sed -i "s|${{ env.MF_CONTAINER_NAME }}:.*|${{ env.MF_CONTAINER_NAME }}:${{ needs.setup.outputs.mf-version }}|g" \
+            development-mediaflow.tech/deployments/fileselector-web/fileselector-web.yaml
+
+      - name: Commit and push manifest update
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config user.email "githubactions@mediaflow.com"
+          git config user.name "GitHub Actions"
+          git add development-mediaflow.tech/deployments/fileselector-web/fileselector-web.yaml
+          git commit -m "ci: update fileselector-web image to ${{ needs.setup.outputs.mf-version }}"
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && break
+            echo "Push failed, retrying ($i/5)..."
+            sleep $((i * 3))
+          done
+
+  notify_slack:
+    name: Notify Slack
+    runs-on: mf-runner
+    needs: [setup, update_k8s_manifest]
+    environment: development
+
+    container:
+      image: dockerhub.mediaflow.com/mfdeploy
+      credentials:
+        username: mediaflow
+        password: ${{ secrets.MEDIAFLOW_PASSWORD }}
+
+    steps:
+      - name: Post to slack
+        run: /bin/slacka "Successfully deployed \`${{ github.repository }}\` to *DEV (K8s)*, committed to *${GITHUB_REF_NAME}* branch by ${{ github.actor }} \`(${{ needs.setup.outputs.mf-message }})\`, version \`${{ needs.setup.outputs.mf-version }}\`. *Thank you ${{ github.actor }}!*"

@@ -1,0 +1,9 @@
+node_modules
+dist
+.git
+.gitignore
+k8s
+Dockerfile
+.dockerignore
+npm-debug.log
+*.md
