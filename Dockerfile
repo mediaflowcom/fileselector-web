@@ -5,7 +5,11 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-RUN npm run build
+RUN if [ "$BUILDTARGET" = "develop" ]; then \
+      npx webpack --config webpack.development.js; \
+    else \
+      npm run build; \
+    fi
 
 # ---- Runtime stage ----
 FROM nginx:1.27-alpine AS runtim

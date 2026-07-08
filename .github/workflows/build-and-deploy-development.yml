@@ -85,12 +85,16 @@ jobs:
           git config user.email "githubactions@mediaflow.com"
           git config user.name "GitHub Actions"
           git add development-mediaflow.tech/deployments/fileselector-web/fileselector-web.yaml
-          git commit -m "ci: update fileselector-web image to ${{ needs.setup.outputs.mf-version }}"
-          for i in 1 2 3 4 5; do
-            git pull --rebase origin main && git push && break
-            echo "Push failed, retrying ($i/5)..."
-            sleep $((i * 3))
-          done
+          if ! git diff --cached --quiet; then
+            git commit -m "ci: update fileselector-web image to ${{ needs.setup.outputs.mf-version }}"
+            for i in 1 2 3 4 5; do
+              git pull --rebase origin main && git push && break
+              echo "Push failed, retrying ($i/5)..."
+              sleep $((i * 3))
+            done
+          else
+            echo "No changes to commit, manifest already up to date"
+          fi
 
   notify_slack:
     name: Notify Slack
