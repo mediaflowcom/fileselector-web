@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # 2.6.0 UNRELEASED
 
 ### Added
+- Display-only AI content labels. Files labelled "Created by AI" or
+  "Modified by AI" show an AI badge on grid thumbnails (next to the GDPR
+  badge) and in the list view, with a tooltip containing the label and usage
+  description, plus an AI label row in the file info panel. Label texts come
+  from the shared `app.damInfo` dictionary (`aiLabel` / `aiLabelCreated` /
+  `aiLabelModified`), fetched and cached like the existing `app.dateTime`
+  dictionary.
 - Pagination. 500 files per page.
 
 ### Changed

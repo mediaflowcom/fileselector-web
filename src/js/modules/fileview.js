@@ -1,4 +1,6 @@
 /* Mediaflow File Selector */
+import { hasAiLabel, getAiLabelTooltip, aiLabelIcon } from './../helpers/ailabel';
+
 var fileNameComparer = function (a, b) {
   if (a.filename > b.filename)
     return 1;
@@ -60,7 +62,7 @@ var dateComparer2 = function (a, b) {
 };
 
 const FILES_PER_PAGE = 500;
-const FILE_LIST_FIELDS = 'id,name,filename,filesize,type,mediumPreview,smallPreview,thumbPreview,mark,uploaded,uploadedby,gdprstatus,gdprtype,mediaid,alttext,alpha';
+const FILE_LIST_FIELDS = 'id,name,filename,filesize,type,mediumPreview,smallPreview,thumbPreview,mark,uploaded,uploadedby,gdprstatus,gdprtype,mediaid,alttext,alpha,aiContent';
 
 const FolderFileSortField = {
   FILENAME: 'filename',
@@ -226,6 +228,9 @@ function createFileElement(me, _this, file, idx, isSearch, warndiv, smallWindow)
     col1.style.textOverflow = 'ellipsis';
     col1.style.whiteSpace = 'nowrap';
     col1.innerText = file.filename;
+    var listAiBadge = _this.createAiBadge(file);
+    if (listAiBadge)
+      col1.appendChild(listAiBadge);
     row.appendChild(col1);
 
     col2 = document.createElement('div');
@@ -314,6 +319,10 @@ function createFileElement(me, _this, file, idx, isSearch, warndiv, smallWindow)
       '</svg>';
     file.elem.appendChild(spanVideoFileType);
   }
+
+  var aiBadge = _this.createAiBadge(file);
+  if (aiBadge)
+    file.elem.appendChild(aiBadge);
 
   var imgWrapper = Object.assign(document.createElement('div'), {
     className: 'mf-img-wrapper' + (file.alpha ? ' mf-file-alpha' : '')
@@ -538,7 +547,7 @@ export default {
       lang: lang,
       ai: includeAiSearch
     };
-    me.api.post('search/file?fields=id,name,filename,filesize,type,mediumPreview,smallPreview,thumbPreview,mark,uploaded,uploadedby,gdprstatus,gdprtype,mediaid,alttext',
+    me.api.post('search/file?fields=id,name,filename,filesize,type,mediumPreview,smallPreview,thumbPreview,mark,uploaded,uploadedby,gdprstatus,gdprtype,mediaid,alttext,aiContent',
       postData,
       function (o) { me.files = _this.filterFiles(me, o); _this.showFiles(me, _this, true) },
       function (o) { console.error('Error: Failed to get search result data'); })
@@ -671,6 +680,25 @@ export default {
       _this.lazyLoadObserved.add(div);
       _this.lazyLoadObserver.observe(div);
     });
+  },
+
+  createAiBadge: function (file) {
+    if (!hasAiLabel(file))
+      return null;
+
+    var badge = document.createElement('span');
+    badge.className = this.hasGdprWarning(file) ? 'mf-ai-label mf-ai-label-beside-gdpr' : 'mf-ai-label';
+    badge.innerHTML = aiLabelIcon;
+    badge.title = getAiLabelTooltip(file);
+    return badge;
+  },
+
+  hasGdprWarning: function (file) {
+    if (file.gdprStatus == undefined)
+      return false;
+
+    var status = file.gdprStatus.toUpperCase();
+    return status == 'MISSING_CONSENT' || status == 'INVALID_CONSENT' || status == 'AWAIT_CONSENT';
   },
 
   showFiles: function (me, _this, isSearch) {
