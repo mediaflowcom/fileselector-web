@@ -9,8 +9,8 @@
 
 .mf-fileinfo,
 .mf-fileusage {
-    padding: 10px;
-    padding-top: 20px;
+    padding: 20px;
+    padding-top: 40px;
     word-break: break-word;
 }
 
@@ -31,6 +31,7 @@
     font-size: .825rem;
     font-weight: 600;
     word-break: break-word;
+    hyphens: auto;
 }
 
 .mf-fileinfo>div,
@@ -107,6 +108,12 @@
     color: var(--mf-fs-alert-color);
 }
 
+.mf-fileinfo .mf-ai-label-description {
+    display: block;
+    margin-top: 3px;
+    white-space: pre-line;
+}
+
 .mf-fileinfo .mf-file-rating{
     display: flex;
     column-gap: 4px;
@@ -141,6 +148,10 @@
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     grid-auto-rows: max-content;
     gap: 10px;
+    box-sizing: border-box;
+
+    overflow-y: auto;
+    height: calc(100% - 56px /*header*/);
 }
 
 .mf_fileviewArea .mf-files-box.smallicons {
@@ -190,3 +201,33 @@
     width: 100%;
     height: 20px;
 }
+
+/* Load more button */
+.mf_fileviewArea .mf-files-box .mf-load-more {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 0 0;
+  clear: both;
+}
+
+.mf_fileviewArea .mf-files-box .mf-load-more-btn {
+  padding: 8px 20px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--mf-fs-text, #798291);
+  background-color: var(--mf-fs-bg-100, #f4f5f6);
+  border: 1px solid var(--mf-fs-border, #d8dce2);
+  border-radius: 1vw;
+  cursor: pointer;
+}
+
+.mf_fileviewArea .mf-files-box .mf-load-more-btn:hover:not(:disabled) {
+  background-color: var(--mf-fs-bg-200, #e8eaed);
+}
+
+.mf_fileviewArea .mf-files-box .mf-load-more-btn:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+/* end */

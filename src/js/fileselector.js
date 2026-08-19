@@ -46,9 +46,20 @@ export default class FileSelector {
 		if(typeof(config.apiBase) !== 'string' || config.apiBase.length<10 || config.apiBase.substring(0,4) !== 'http') {
 			config.apiBase = "https://api.mediaflow.com/1";
 		}
+
+		if(typeof(config.oauthBase) !== 'string' || config.oauthBase.length<10 || config.oauthBase.substring(0,4) !== 'http') {
+			var apiBaseMatchesMediaflowHost = config.apiBase.match(/^(https?:\/\/)api(\.[^/]+)(?:\/.*)?$/);
+			if(apiBaseMatchesMediaflowHost) {
+				config.oauthBase = apiBaseMatchesMediaflowHost[1] + 'accounts' + apiBaseMatchesMediaflowHost[2];
+			} else {
+				config.oauthBase = config.apiBase;
+			}
+		}
 	  
 		if(typeof(config.locale) !== 'string' || config.locale.length !== 5)
-		  config.locale = 'sv_SE';
+		  config.locale = 'sv-SE';
+		else
+		  config.locale = config.locale.replace(/_/g, '-'); // normalize legacy 'sv_SE' to 'sv-SE'
 
         (async () => {
           me.folders = []; // folderTree
@@ -86,10 +97,12 @@ export default class FileSelector {
 		fileview.showFolder(me, idx,null);
 	}
   
-	fileClick(me, idx, issearch) {
-		if(typeof(me.config.events)==='function')
-		  me.config.events('fileClick', {id:me.files[idx].id, name:me.files[idx].name, mediaId:me.files[idx].mediaId, isSearch:issearch, type:me.files[idx].type.type});
-		me.fileinfo.showInfo(me, idx);
+	fileClick(me, idx, issearch, fileId) {
+		var id = fileId != null ? fileId : me.files[idx].id;
+		var file = idx >= 0 ? me.files[idx] : { id: id };
+		if(typeof(me.config.events) === 'function')
+		  me.config.events('fileClick', {id: file.id, name: file.name, mediaId: file.mediaId, isSearch: issearch, type: file.type ? file.type.type : undefined});
+		me.fileinfo.showInfo(me, id);
 		me.item.dataset.activeView = "file"; // change activeview for mobile
 	}
 
@@ -223,14 +236,14 @@ export default class FileSelector {
 		me.topArea.style.left = '0';
 		me.topArea.style.right = '0';
 		me.topArea.style.top = '0';		
-		me.topArea.style.height = '40px';
+		me.topArea.style.height = '50px';
 		me.topArea.className = 'mf_topArea';
 		me.item.appendChild(me.topArea);
 
 		me.foldertreeArea = document.createElement('div');
 		me.foldertreeArea.style.position = 'absolute';
 		me.foldertreeArea.style.left = '0';
-		me.foldertreeArea.style.top = '40px';
+		me.foldertreeArea.style.top = '50px';
 		me.foldertreeArea.style.bottom = '0';
 		me.foldertreeArea.style.width = '250px';
 		me.foldertreeArea.style.overflow = 'auto';
@@ -240,17 +253,17 @@ export default class FileSelector {
 		me.fileviewArea = document.createElement('div');
 		me.fileviewArea.style.position = 'absolute';
 		me.fileviewArea.style.left = '250px';
-		me.fileviewArea.style.top = '40px';
+		me.fileviewArea.style.top = '50px';
 		me.fileviewArea.style.bottom = '0';
 		me.fileviewArea.style.right = '300px';
-		me.fileviewArea.style.overflow = 'auto';
+		me.fileviewArea.style.overflow = 'hidden';
 		me.fileviewArea.className = 'mf_fileviewArea';
 		me.item.appendChild(me.fileviewArea);
 
 		me.fileinfoArea = document.createElement('div');
 		me.fileinfoArea.style.position = 'absolute';
 		me.fileinfoArea.style.right = '0';
-		me.fileinfoArea.style.top = '40px';
+		me.fileinfoArea.style.top = '50px';
 		me.fileinfoArea.style.bottom = '0';
 		me.fileinfoArea.style.width = '300px';
 		me.fileinfoArea.className = 'mf_fileinfoArea';
@@ -358,7 +371,7 @@ export default class FileSelector {
 				if(me.isDownloading)
 					return false;
 			  	me.isDownloading = true;
-			  	me.api.get('file/' + me.file.id + '/downloads/0', function(o) {
+				me.api.get('file/' + me.file.id + '/downloads/0', function(o) {
 					me.isDownloading = false;
 					var downloadURL = o[0].downloadURL;
 					if (me.config.permanentURL && (me.isValidFileType(me.file))){
@@ -366,29 +379,35 @@ export default class FileSelector {
 						var xhr = new XMLHttpRequest();
 						xhr.open('GET', downloadURL);
 						xhr.onload = function() {
-						  if (xhr.readyState === 4) {
-							if(xhr.status === 200 || xhr.status === 201) {
-							  try {
-								var o = JSON.parse(xhr.responseText);
-								me.config.success({
-									url: o.url, 
-									name:me.file.name, 
-									filename:me.file.filename, 
-									mediaId: me.file.mediaId, 
-									id:  me.file.id, 
-									folderId: me.selectedFolderId,
-									basetype: me.file.type.type, 
-									filetype: me.file.type.extension, 
-									width: me.file.width, 
-									height: me.file.width, 
-									photographer: me.file.photographer,
-									altText: me.config.autosetAltText !== false ? me.file.alttext : ""
-								 });
-							  } catch(e) {
-								alert('Ett fel inträffade vid nerladdning av fil');
-							  }
+							if (xhr.readyState === 4) {
+								if(xhr.status === 200 || xhr.status === 201) {
+									try {
+										var o = JSON.parse(xhr.responseText);
+										me.config.success({
+											url: o.url, 
+											name:me.file.name, 
+											filename:me.file.filename, 
+											mediaId: me.file.mediaId, 
+											id:  me.file.id, 
+											folderId: me.selectedFolderId,
+											basetype: me.file.type.type, 
+											filetype: me.file.type.extension, 
+											width: me.file.width, 
+											height: me.file.height, 
+											photographer: me.file.photographer,
+											altText: me.config.autosetAltText !== false ? me.file.alttext : "",
+											// Extra metadata:
+											additionalInfo: me.file.additionalInfo,
+											customFields: me.file.customFields,
+											description: me.file.description,
+											instructions: me.file.instructions,
+											keywords: me.file.keywords
+										});
+									} catch(e) {
+										alert(me.lang.translate('DOWNLOAD_FAILED'));
+									}
+								}
 							}
-						  }
 						}
 						xhr.send();
 					} else {
@@ -403,15 +422,21 @@ export default class FileSelector {
 								basetype:me.file.type.type, 
 								filetype:me.file.type.extension, 
 								width:me.file.width, 
-								height:me.file.width, 
+								height:me.file.height, 
 								photographer:me.file.photographer,
-								altText: me.config.autosetAltText !== false ? me.file.alttext : ""
-							 });
+								altText: me.config.autosetAltText !== false ? me.file.alttext : "",
+								// Extra metadata:
+								additionalInfo: me.file.additionalInfo,
+								customFields: me.file.customFields,
+								description: me.file.description,
+								instructions: me.file.instructions,
+								keywords: me.file.keywords
+							});
 						}, 5);
 					}
-			  	}, function(o) {
-				  	alert('Ett fel inträffade vid nerladdning av fil');
-				  	me.isDownloading = false;
+				}, function(o) {
+					alert(me.lang.translate('DOWNLOAD_FAILED'));
+					me.isDownloading = false;
 				});
 			} else {
 				if(me.cropperviewVisible) {
@@ -431,6 +456,12 @@ export default class FileSelector {
 								basetype:me.file.type.type, 
 								filetype:me.file.type.extension,
 								folderId: me.selectedFolderId,
+								// Extra metadata:
+								additionalInfo: me.file.additionalInfo,
+								customFields: me.file.customFields,
+								description: me.file.description,
+								instructions: me.file.instructions,
+								keywords: me.file.keywords
 							});}, 5);
 						  return true;
 						}

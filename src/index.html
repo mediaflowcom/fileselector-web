@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="sv">
 
 <head>
   <meta charset="utf-8">
@@ -93,12 +93,29 @@
     @media (width < 600px) {
       #test1{
         width: 100% !important;
-      }      
+      }
     }
+
+    #themeToggle {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 10000;
+      background: #307CAB;
+      color: #fff;
+      border: 0;
+      border-radius: 4px;
+      padding: 6px 10px;
+      font-family: inherit;
+      font-size: .8rem;
+      cursor: pointer;
+    }
+    #themeToggle:hover { background: #225677; }
   </style>
 </head>
 
 <body>
+  <button id="themeToggle" type="button">Switch to dark</button>
   <div id="settingsDiv" class="light">
     <div>
       <label>Active Refresh Token: </label>
@@ -124,10 +141,13 @@
     <div>
       <label>Language:</label>
       <select id="lang">
-        <option value="sv_SE">Swedish</option>
-        <option value="nb_NO">Norwegian</option>
-        <option value="en_US">English</option>
-        <option value="fi_FI">Finnish</option>
+        <option value="sv-SE">Swedish</option>
+        <option value="nb-NO">Norwegian</option>
+        <option value="en-US">English</option>
+        <option value="fi-FI">Finnish</option>
+        <option value="de-DE">German</option>
+        <option value="fr-FR">French</option>
+        <option value="it-IT">Italian</option>
       </select>
     </div>
     <div>
@@ -180,6 +200,7 @@
       document.getElementById('browsebtn').style.display = 'none';
       var lang = document.getElementById('lang').value;
       var apiBase = 'https://api.' + document.getElementById('domain').value + '/1';
+      var oauthBase = 'https://accounts.' + document.getElementById('domain').value;
       let preset = document.getElementById("preset").value;
 
       // Testing set-up examples
@@ -196,7 +217,7 @@
           break;
       }
 
-      currentFsSettings = { ...currentFsSettings, locale: lang, client_id: clientId, client_secret: clientSecret, refresh_token: refreshToken, apiBase: apiBase }
+      currentFsSettings = { ...currentFsSettings, locale: lang, client_id: clientId, client_secret: clientSecret, refresh_token: refreshToken, apiBase: apiBase, oauthBase: oauthBase };
 
       myFileSelector = new FileSelector("test1", {...currentFsSettings });
     }
@@ -336,6 +357,12 @@
           localStorage.setItem('refreshToken', _refreshToken.value);
         }
       }      
+    };
+
+    document.getElementById('themeToggle').onclick = function () {
+      const test1 = document.getElementById('test1');
+      const isLight = test1.classList.toggle('light');
+      this.textContent = isLight ? 'Switch to dark' : 'Switch to light';
     };
 
     // show file selector?

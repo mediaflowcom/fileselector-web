@@ -1,6 +1,7 @@
 /* Mediaflow File Selector */
 
 import {getTranslation as translate} from "./../services/translations";
+import { hasAiLabel, getAiLabelHeading, getAiLabelTitle } from "./../helpers/ailabel";
 
 export default {
   me:{},
@@ -8,46 +9,50 @@ export default {
     this.clickCallback = clickCallback;
     this.me = me;
   },
-  showInfo: function(me, idx) {
+  showInfo: function (me, fileId) {
     var _this = this;
 
-    me.api.get('file/' + me.files[idx].id + '?fields=any&locale=' + me.lang.locale(), function (o) {
+    me.api.get('file/' + fileId + '?fields=any&locale=' + me.lang.locale(), function (o) {
       me.file = o[0];
 
-      me.api.get('file/' + me.files[idx].id + '/checkpermissions', function (permissions) {
+      if (me.file.customFields) {
+        me.file.customFields = me.file.customFields.filter((cf) => cf.value !== "" && cf.value != null);
+      }
+
+      me.api.get('file/' + fileId + '/checkpermissions', function (permissions) {
         me.file.permissions = permissions[0];
 
-        me.api.get('file/' + me.files[idx].id + '/usage?fields=any', function (usage) {
+        me.api.get('file/' + fileId + '/usage?fields=any', function (usage) {
           me.file.usage = usage;
-          
-          me.api.get('file/' + me.files[idx].id + '/license?fields=rightsExists,rightsInformation,licenseInformation,downloadWarning,lockFile,useFrom,useTo', function (licenses) {
+
+          me.api.get('file/' + fileId + '/license?fields=rightsExists,rightsInformation,licenseInformation,downloadWarning,lockFile,useFrom,useTo', function (licenses) {
             me.file.license = licenses[0];
-          
-            me.api.get('file/' + me.files[idx].id + '/aialttext?check=1', function (aiAltText) {
+
+            me.api.get('file/' + fileId + '/aialttext?check=1', function (aiAltText) {
               me.file.aiAltTextCanBeUsed = (aiAltText.validFiletype && aiAltText.processed);
               _this.showFileInfo(me, _this);
             }, function (o) {
               console.error('Error: Failed to get AI Alt text check data');
-              _this.showFileInfo(me, _this); // Failsafe to show file info even if "aialttext" enpoint does not exist
+              _this.showFileInfo(me, _this);
             });
-          
+
           }, function (o) {
             console.error('Error: Failed to get license data');
-            _this.showFileInfo(me, _this); // Failsafe to show file info even if "license" enpoint does not exist
+            _this.showFileInfo(me, _this);
           });
-        
+
         }, function (o) {
           me.file.usage = [];
           console.error('Error: Failed to get file usage data');
         });
-      
+
       }, function (o) {
         console.error('Error: Failed to get permissions data');
       });
 
     }, function (o) {
       console.error('Error: Failed to get file data');
-    })
+    });
   },
   showFileInfo: function(me, _this) {
     var canDownload = true;
@@ -231,7 +236,7 @@ export default {
       }
     }
     //#endregion
-    
+
     fileInfoData += `<label>${translate("fileInfo", "fileName")}</label><div>${_this.escapeHtml(me.file.filename)}</div>`;
     if (me.file.name?.length > 0) {
       fileInfoData += `<label>${translate("fileInfo", "name")}</label><div>${_this.escapeHtml(me.file.name)}</div>`;
@@ -249,7 +254,16 @@ export default {
     fileInfoData += `<label>${me.lang.translate('FILE_INFO_FILE_TYPE')}</label><div>${me.file.type.description}</div>`;
     fileInfoData += `<label>${me.lang.translate('FILE_INFO_UPLOADED')}</label><div>${_this.escapeHtml(me.lang.formatLongDate(me.file.uploaded))}</div>`;
 
-    if(me.file?.rating > 0 ?? false){
+    if (hasAiLabel(me.file)) {
+      const aiDescription = me.file.aiContent?.description ?? '';
+      fileInfoData += `<label>${getAiLabelTitle()}</label>
+      <div>
+        ${_this.escapeHtml(getAiLabelHeading(me.file))}
+        ${aiDescription ? `<span class="mf-ai-label-description">${_this.escapeHtml(aiDescription)}</span>` : ''}
+      </div>`;
+    }
+
+    if ((me.file?.rating ?? 0) > 0) {
       fileInfoData += `<label>${me.lang.translate('FILE_INFO_RATING')}</label>
         <div class="mf-file-rating">
           <span class="${me.file.rating > 0 ? 'mf-selected' : ''}"></span>
@@ -288,7 +302,7 @@ export default {
     }
 
     //#region License
-    if (me.file.license?.rightsExists > 0 ?? false) {
+    if ((me.file.license?.rightsExists ?? 0) > 0) {
       fileInfoData += `<div class="devider"></div>`;
 
       fileInfoData += `<label>${me.lang.translate('LICENSE_RIGHTS')}</label><div>${me.lang.translate('LICENSE_RIGHTS_'+me.file.license.rightsExists)}</div>`;

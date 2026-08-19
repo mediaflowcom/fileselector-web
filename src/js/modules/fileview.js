@@ -1,4 +1,6 @@
 /* Mediaflow File Selector */
+import { hasAiLabel, getAiLabelTooltip, aiLabelIcon } from './../helpers/ailabel';
+
 var fileNameComparer = function (a, b) {
   if (a.filename > b.filename)
     return 1;
@@ -59,13 +61,302 @@ var dateComparer2 = function (a, b) {
     return -1;
 };
 
+const FILES_PER_PAGE = 500;
+const FILE_LIST_FIELDS = 'id,name,filename,filesize,type,mediumPreview,smallPreview,thumbPreview,mark,uploaded,uploadedby,gdprstatus,gdprtype,mediaid,alttext,alpha,aiContent';
+
+const FolderFileSortField = {
+  FILENAME: 'filename',
+  FILESIZE: 'filesize',
+  MARK: 'mark',
+  UPLOADED: 'uploaded',
+};
+
+const SortOrder = {
+  ASC: 'asc',
+  DESC: 'desc',
+};
+
+function buildFolderFilesUrl(me, folderId) {
+  var p = me.folderPagination;
+  return 'folder/' + folderId + '/files?sort=' + me.folderSortField
+    + '&order=' + me.folderSortOrder
+    + '&fields=' + FILE_LIST_FIELDS
+    + '&per_page=' + p.perPage + '&page=' + p.page;
+}
+
+function hasClientFileFilters(me) {
+  if (typeof me.config.limitFileType === 'string' && me.config.limitFileType !== '') {
+    return true;
+  }
+  if (me.config.hideUnsafeGDPR === true) {
+    return true;
+  }
+  if (me.config.hideUnassignedGDPR === true) {
+    return true;
+  }
+  return false;
+}
+
+function updateFolderPaginationTotals(me, pagination, rawBatchLength, append) {
+  if (!append) {
+    pagination.rawFetchedCount = rawBatchLength;
+  } else {
+    pagination.rawFetchedCount = (pagination.rawFetchedCount || 0) + rawBatchLength;
+  }
+
+  var apiTotal = pagination.apiTotalCount;
+  if (apiTotal == null || isNaN(apiTotal)) {
+    pagination.totalCount = me.files.length;
+    return;
+  }
+
+  var apiHasMore = pagination.page * pagination.perPage < apiTotal;
+  if (!hasClientFileFilters(me) || !apiHasMore) {
+    pagination.totalCount = apiHasMore ? apiTotal : me.files.length;
+    return;
+  }
+
+  if (!pagination.rawFetchedCount) {
+    pagination.totalCount = me.files.length;
+    return;
+  }
+
+  var ratio = me.files.length / pagination.rawFetchedCount;
+  pagination.totalCount = Math.max(me.files.length, Math.round(apiTotal * ratio));
+}
+
+function hasMoreFolderFiles(me) {
+  if (!me.folderPagination) {
+    return false;
+  }
+  var p = me.folderPagination;
+  if (p.apiTotalCount != null && !isNaN(p.apiTotalCount)) {
+    return p.page * p.perPage < p.apiTotalCount;
+  }
+  return (p.lastRawBatchLength || 0) >= p.perPage;
+}
+
+function isSearchView(me) {
+  return typeof me.searchquery === 'string' && me.searchquery.length > 0;
+}
+
+function createGdprWarndiv(me) {
+  var warndiv = document.createElement('div');
+  warndiv.className = 'mf-gdpr-warning';
+  warndiv.title = me.lang.translate('FILE_VIEW_GDPR_WARNING');
+  warndiv.style.position = 'absolute';
+  warndiv.style.height = '16px';
+  warndiv.style.width = '16px';
+  warndiv.style.backgroundColor = '#EF60A3';
+  warndiv.style.color = 'white';
+  warndiv.style.fontFamily = 'Arial, Helvetica sans-serif';
+  warndiv.style.fontSize = '14px';
+  warndiv.style.lineHeight = '16px';
+  warndiv.style.fontWeight = 'bold';
+  warndiv.innerText = '!';
+  warndiv.style.textAlign = 'center';
+  warndiv.style.borderRadius = '50%';
+  return warndiv;
+}
+
+function createListViewHeader(me, _this, filesbox) {
+  var header = document.createElement('div');
+  header.className = 'mf-header';
+  if (me.folderSortOrder === SortOrder.DESC) {
+    header.classList.add('mf-reversed');
+  }
+  header.style.cursor = 'pointer';
+  header.style.padding = '0 7px 7px';
+
+  var row = document.createElement('div');
+  row.className = 'mf-row';
+
+  var col1 = document.createElement('div');
+  col1.style.flex = '3 1 100px';
+  col1.className = me.folderSortField === FolderFileSortField.FILENAME ? 'mf-col mf-filename mf-active' : 'mf-col mf-filename';
+  col1.style.overflowX = 'hidden';
+  col1.style.textOverflow = 'ellipsis';
+  col1.style.whiteSpace = 'nowrap';
+  col1.innerText = me.lang.translate('FILE_INFO_FILE_NAME');
+  col1.addEventListener('click', function () { _this.changeSort(me, _this, FolderFileSortField.FILENAME); }, false);
+  row.appendChild(col1);
+
+  var col2 = document.createElement('div');
+  col2.style.textAlign = 'right';
+  col2.style.flexBasis = '100px';
+  col2.className = me.folderSortField === FolderFileSortField.FILESIZE ? 'mf-col mf-filesize mf-active' : 'mf-col mf-filesize';
+  col2.innerText = me.lang.translate('FILE_INFO_FILE_SIZE');
+  col2.addEventListener('click', function () { _this.changeSort(me, _this, FolderFileSortField.FILESIZE); }, false);
+  row.appendChild(col2);
+
+  var col3 = document.createElement('div');
+  col3.style.flexBasis = '100px';
+  col3.className = me.folderSortField === FolderFileSortField.MARK ? 'mf-col mf-active' : 'mf-col';
+  col3.innerText = me.lang.translate('FILE_VIEW_MARKING');
+  col3.addEventListener('click', function () { _this.changeSort(me, _this, FolderFileSortField.MARK); }, false);
+  row.appendChild(col3);
+
+  var col4 = document.createElement('div');
+  col4.style.flexBasis = '100px';
+  col4.className = me.folderSortField === FolderFileSortField.UPLOADED ? 'mf-col mf-date mf-active' : 'mf-col mf-date';
+  col4.innerText = me.lang.translate('FILE_INFO_UPLOADED');
+  col4.addEventListener('click', function () { _this.changeSort(me, _this, FolderFileSortField.UPLOADED); }, false);
+  row.appendChild(col4);
+
+  header.appendChild(row);
+  filesbox.appendChild(header);
+}
+
+function createFileElement(me, _this, file, idx, isSearch, warndiv, smallWindow) {
+  var div1, col1, col2, col3, col4, row, markDiv;
+
+  if (me.previewSize === 2) {
+    file.elem = document.createElement('div');
+    file.elem.dataset.idx = idx;
+    file.elem.className = 'mf-file';
+    file.elem.style.padding = '5px';
+    file.elem.style.position = 'relative';
+    file.elem.style.cursor = 'pointer';
+    file.elem.addEventListener('click', function (e) { _this.fileClick(me, e, this, _this, isSearch); }, false);
+
+    row = document.createElement('div');
+    row.className = 'mf-row';
+    col1 = document.createElement('div');
+    col1.style.flex = '3 1 100px';
+    col1.className = 'mf-col col-filename';
+    col1.style.overflowX = 'hidden';
+    col1.style.textOverflow = 'ellipsis';
+    col1.style.whiteSpace = 'nowrap';
+    col1.innerText = file.filename;
+    var listAiBadge = _this.createAiBadge(file);
+    if (listAiBadge)
+      col1.appendChild(listAiBadge);
+    row.appendChild(col1);
+
+    col2 = document.createElement('div');
+    col2.style.flexBasis = '100px';
+    col2.style.textAlign = 'right';
+    col2.className = 'mf-col col-filesize';
+    col2.innerText = me.lang.humanFileSize(file.filesize);
+    row.appendChild(col2);
+
+    col3 = document.createElement('div');
+    col3.style.flexBasis = '100px';
+    col3.className = 'mf-col col-mark';
+    markDiv = document.createElement('div');
+    markDiv.style.width = '10px';
+    markDiv.style.height = '10px';
+    markDiv.style.display = 'inline-block';
+    markDiv.className = 'mf-mark mf-mark-' + file.mark;
+    col3.appendChild(markDiv);
+    row.appendChild(col3);
+
+    col4 = document.createElement('div');
+    col4.style.flexBasis = '100px';
+    col4.className = 'mf-col col-date';
+    col4.innerText = file.uploaded.substring(0, 10);
+    if (file.gdprStatus != undefined) {
+      var s = file.gdprStatus.toUpperCase();
+      if (s == 'MISSING_CONSENT' || s == 'INVALID_CONSENT' || s == 'AWAIT_CONSENT') {
+        var listWarndiv = warndiv.cloneNode(true);
+        listWarndiv.style.position = '';
+        listWarndiv.style.float = 'right';
+        col4.innerHTML += listWarndiv.outerHTML;
+      }
+    }
+    row.appendChild(col4);
+    file.elem.appendChild(row);
+    return file.elem;
+  }
+
+  file.elem = document.createElement('div');
+  file.elem.title = file.name;
+  file.elem.className = 'mf-file';
+  file.elem.dataset.idx = idx;
+  if (file.gdprStatus != undefined) {
+    var gdprStatus = file.gdprStatus.toUpperCase();
+    if (gdprStatus == 'MISSING_CONSENT' || gdprStatus == 'INVALID_CONSENT' || gdprStatus == 'AWAIT_CONSENT') {
+      file.elem.innerHTML += warndiv.outerHTML;
+    }
+  }
+
+  div1 = Object.assign(document.createElement('div'), { className: 'mf-img' });
+  var useSmallPreview = me.previewSize === 0 || smallWindow;
+  var previewUrl = useSmallPreview ? file.smallPreview : file.mediumPreview;
+
+  if (previewUrl) {
+    div1.classList.add('lazy-load-background');
+    div1.setAttribute('data-background-src', previewUrl);
+    div1.style.backgroundRepeat = 'no-repeat';
+    div1.style.backgroundPosition = 'center';
+  } else if (file.type.type == 'sound') {
+    div1.style.backgroundImage = 'url(//static.mediaflowpro.com/images/icons/filetype-651-dark.svg)';
+    div1.style.backgroundRepeat = 'no-repeat';
+    div1.style.backgroundPosition = 'center';
+    div1.style.backgroundSize = '80%';
+    div1.classList.add('mf-file-icon');
+  } else if (file.type.type == 'file' && file.type.extension == 'srt') {
+    div1.style.backgroundImage = 'url(//static.mediaflowpro.com/images/icons/filetype-592-dark.svg)';
+    div1.style.backgroundRepeat = 'no-repeat';
+    div1.style.backgroundPosition = 'center';
+    div1.style.backgroundSize = '80%';
+    div1.classList.add('mf-file-icon');
+  }
+
+  if (file?.type?.extension != null) {
+    var spanFileType = document.createElement('span');
+    spanFileType.className = 'mf-file-type';
+    spanFileType.innerText = file?.type?.extension;
+    file.elem.appendChild(spanFileType);
+  }
+
+  if (file?.type?.type === 'video') {
+    var spanVideoFileType = document.createElement('span');
+    spanVideoFileType.className = 'mf-file-type_video';
+    spanVideoFileType.innerHTML = '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" fill="currentColor" class="bi bi-play-circle" viewBox="0 0 16 16">' +
+      '<path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"></path>' +
+      '<path d="M6.271 5.055a.5.5 0 0 1 .52.038l3.5 2.5a.5.5 0 0 1 0 .814l-3.5 2.5A.5.5 0 0 1 6 10.5v-5a.5.5 0 0 1 .271-.445z"></path>' +
+      '</svg>';
+    file.elem.appendChild(spanVideoFileType);
+  }
+
+  var aiBadge = _this.createAiBadge(file);
+  if (aiBadge)
+    file.elem.appendChild(aiBadge);
+
+  var imgWrapper = Object.assign(document.createElement('div'), {
+    className: 'mf-img-wrapper' + (file.alpha ? ' mf-file-alpha' : '')
+  });
+  imgWrapper.appendChild(div1);
+  file.elem.appendChild(imgWrapper);
+
+  var divLbl = document.createElement('div');
+  divLbl.className = 'mf-lbl';
+  var fileMarkDiv = Object.assign(document.createElement('span'), {
+    className: 'mf-mark mf-mark-' + file.mark
+  });
+  divLbl.appendChild(fileMarkDiv);
+  divLbl.appendChild(Object.assign(document.createElement('span'), {
+    innerText: file.name,
+    className: 'mf-img-name'
+  }));
+  divLbl.appendChild(Object.assign(document.createElement('span')));
+  file.elem.appendChild(divLbl);
+
+  file.elem.addEventListener('click', function (e) { _this.fileClick(me, e, this, _this, isSearch); }, false);
+  return file.elem;
+}
+
 export default {
   me: {},
   init: function (me, clickCallback) {
     this.clickCallback = clickCallback;
     this.me = me;
-    me.sort = 1;
-    me.sortdir = true;
+    this.lazyLoadObserver = null;
+    this.lazyLoadObserved = new WeakSet();
+    this.lazyLoadRoot = null;
+    me.folderSortField = FolderFileSortField.FILENAME;
+    me.folderSortOrder = SortOrder.ASC;
     me.previewSize = 1;
     if (me.config.disableLocalStorage !== true) {
       if (window.localStorage) {
@@ -84,18 +375,157 @@ export default {
   },
 
   showFolder: function (me, idx, selectedFile) {
+    me.searchquery = '';
+    me.folderPagination = {
+      folderIdx: idx,
+      page: 1,
+      perPage: FILES_PER_PAGE,
+      apiTotalCount: null,
+      rawFetchedCount: 0,
+      lastRawBatchLength: 0,
+      totalCount: 0,
+      loading: false
+    };
+    this.loadFolderPage(me, idx, { append: false, selectedFile: selectedFile });
+  },
+
+  loadFolderPage: function (me, idx, options) {
     var _this = this;
-    me.selectedFileId = -1;
-    me.selectedFolderId = me.folders[idx].id;
-    me.api.get('folder/' + me.folders[idx].id + '/files?fields=id,name,filename,filesize,type,mediumPreview,smallPreview,thumbPreview,mark,uploaded,uploadedby,gdprstatus,gdprtype,mediaid,alttext,alpha',
-      function (o) {
-        me.files = _this.filterFiles(me, o);
-        _this.showFiles(me, _this, false, selectedFile);
-        if (selectedFile) {
-          _this.setInitialFile(me, selectedFile, _this);
+    var append = options.append || false;
+    var selectedFile = options.selectedFile || null;
+    var pagination = me.folderPagination;
+    var url = buildFolderFilesUrl(me, me.folders[idx].id);
+
+    me.api.get(url,
+      function (o, totalCount) {
+        var filtered = _this.filterFiles(me, o);
+        if (append) {
+          me.files = me.files.concat(filtered);
+        } else {
+          me.files = filtered;
+          me.selectedFileId = -1;
+          me.selectedFolderId = me.folders[idx].id;
+        }
+        if (totalCount != null && !isNaN(totalCount)) {
+          pagination.apiTotalCount = totalCount;
+        }
+        pagination.lastRawBatchLength = o.length;
+        updateFolderPaginationTotals(me, pagination, o.length, append);
+        pagination.loading = false;
+        if (append) {
+          _this.appendFiles(me, _this, filtered, false);
+        } else {
+          _this.showFiles(me, _this, false);
+          if (selectedFile) {
+            _this.setInitialFile(me, selectedFile, _this);
+          }
         }
       },
-      function (o) { console.error('Error: Failed to get folder data'); })
+      function (o) {
+        pagination.loading = false;
+        if (append) {
+          pagination.page--;
+          _this.updateLoadMoreButton(me, _this);
+        } else if (options.revertSort) {
+          me.folderSortField = options.revertSort.field;
+          me.folderSortOrder = options.revertSort.order;
+          _this.showFiles(me, _this, false);
+        }
+        console.error('Error: Failed to get folder data');
+      },
+      undefined, true
+    );
+  },
+
+  loadMoreFolderFiles: function (me, _this) {
+    var pagination = me.folderPagination;
+    if (!pagination || pagination.loading || !hasMoreFolderFiles(me)) {
+      return;
+    }
+    pagination.loading = true;
+    pagination.page++;
+    _this.updateLoadMoreButton(me, _this);
+    _this.loadFolderPage(me, pagination.folderIdx, { append: true });
+  },
+
+  getFolderHeaderText: function (me) {
+    if (me.files.length === 0) {
+      return me.lang.translate('FOLDER_NOFILES');
+    }
+    var totalCount = me.folderPagination ? me.folderPagination.totalCount : me.files.length;
+    if (totalCount === 1) {
+      return me.lang.translate('FOLDER_HDR_S');
+    }
+    return me.lang.translateWithParams('FOLDER_HDR_P', [totalCount]);
+  },
+
+  updateFolderHeader: function (me) {
+    var header = me.fileviewArea.querySelector('.mf-folderinfo');
+    if (header) {
+      header.innerText = this.getFolderHeaderText(me);
+    }
+  },
+
+  createLoadMoreFooter: function (me, _this) {
+    if (!hasMoreFolderFiles(me)) {
+      return null;
+    }
+
+    var footer = document.createElement('div');
+    footer.className = 'mf-load-more';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'mf-load-more-btn';
+    btn.innerText = me.lang.translate('FILE_VIEW_SHOW_MORE');
+    btn.addEventListener('click', function () {
+      _this.loadMoreFolderFiles(me, _this);
+    }, false);
+    footer.appendChild(btn);
+    return footer;
+  },
+
+  updateLoadMoreButton: function (me, _this) {
+    var footer = me.fileviewArea.querySelector('.mf-load-more');
+    if (!footer) {
+      return;
+    }
+    var btn = footer.querySelector('.mf-load-more-btn');
+    var pagination = me.folderPagination;
+    if (!pagination || !hasMoreFolderFiles(me)) {
+      footer.remove();
+      return;
+    }
+    footer.style.display = '';
+    if (pagination.loading) {
+      btn.disabled = true;
+      btn.innerText = me.lang.translate('FILE_VIEW_FETCHING_DATA');
+    } else {
+      btn.disabled = false;
+      btn.innerText = me.lang.translate('FILE_VIEW_SHOW_MORE');
+    }
+  },
+
+  appendFiles: function (me, _this, newFiles, isSearch) {
+    var warndiv = createGdprWarndiv(me);
+    var smallWindow = false;
+    var filesbox = me.fileviewArea.querySelector('.mf-files-box');
+    var loadMore = filesbox.querySelector('.mf-load-more');
+    var startIdx = me.files.length - newFiles.length;
+    var i;
+
+    for (i = 0; i < newFiles.length; i++) {
+      var idx = startIdx + i;
+      var elem = createFileElement(me, _this, me.files[idx], idx, isSearch, warndiv, smallWindow);
+      if (loadMore) {
+        filesbox.insertBefore(elem, loadMore);
+      } else {
+        filesbox.appendChild(elem);
+      }
+    }
+    _this.updateFolderHeader(me);
+    _this.updateLoadMoreButton(me, _this);
+    _this.initLazyLoading();
+    _this.highlightSelectedFileInList(me);
   },
 
   showSearchResults: function (me, searchtxt, includeAiSearch) {
@@ -104,10 +534,11 @@ export default {
     me.selectedFileId = -1;
     me.searchquery = searchtxt;
 
-    var lang = me.lang.locale().replace('_', '-');
+    var lang = me.lang.locale();
 
     // Fallback to english if language is not supported
-    if (lang !== 'sv-SE' && lang !== 'en-GB' && lang !== 'fi-FI' && lang !== 'nb-NO' && lang !== 'de-DE') {
+    const supportedSearchLangs = ['sv-SE', 'en-GB', 'en-US', 'fi-FI', 'nb-NO', 'de-DE', 'fr-FR', 'it-IT'];
+    if (!supportedSearchLangs.includes(lang)) {
       lang = 'en-GB';
     }
 
@@ -116,38 +547,25 @@ export default {
       lang: lang,
       ai: includeAiSearch
     };
-    me.api.post('search/file?fields=id,name,filename,filesize,type,mediumPreview,smallPreview,thumbPreview,mark,uploaded,uploadedby,gdprstatus,gdprtype,mediaid,alttext',
+    me.api.post('search/file?fields=id,name,filename,filesize,type,mediumPreview,smallPreview,thumbPreview,mark,uploaded,uploadedby,gdprstatus,gdprtype,mediaid,alttext,aiContent',
       postData,
-      function (o) { me.files = _this.filterFiles(me, o); _this.showFiles(me, _this, true, null) },
+      function (o) { me.files = _this.filterFiles(me, o); _this.showFiles(me, _this, true) },
       function (o) { console.error('Error: Failed to get search result data'); })
   },
 
   sortFiles: function (me, filelist) {
-    var sortFunc = fileNameComparer;
-    switch (me.sort) {
-      case 1:
-        if (me.sortdir)
-          return filelist.sort(fileNameComparer);
-        else
-          return filelist.sort(fileNameComparer2);
-        break;
-      case 2:
-        if (me.sortdir)
-          return filelist.sort(fileSizeComparer);
-        else
-          return filelist.sort(fileSizeComparer2);
-        break;
-      case 3:
-        if (me.sortdir)
-          return filelist.sort(markComparer);
-        else
-          return filelist.sort(markComparer2);
-        break;
-      case 4:
-        if (me.sortdir)
-          return filelist.sort(dateComparer);
-        else
-          return filelist.sort(dateComparer2);
+    var ascending = me.folderSortOrder === SortOrder.ASC;
+    switch (me.folderSortField) {
+      case FolderFileSortField.FILENAME:
+        return filelist.sort(ascending ? fileNameComparer : fileNameComparer2);
+      case FolderFileSortField.FILESIZE:
+        return filelist.sort(ascending ? fileSizeComparer : fileSizeComparer2);
+      case FolderFileSortField.MARK:
+        return filelist.sort(ascending ? markComparer : markComparer2);
+      case FolderFileSortField.UPLOADED:
+        return filelist.sort(ascending ? dateComparer : dateComparer2);
+      default:
+        return filelist.sort(ascending ? fileNameComparer : fileNameComparer2);
     }
   },
 
@@ -186,64 +604,118 @@ export default {
     return f;
   },
 
-  changeSort: function (me, _this, sort) {
-    if (me.sort != sort)
-      me.sort = sort;
-    else me.sortdir = !me.sortdir;
-    _this.showFiles(me, _this);
+  changeSort: function (me, _this, sortField) {
+    var previousSortField = me.folderSortField;
+    var previousSortOrder = me.folderSortOrder;
+
+    if (me.folderSortField !== sortField) {
+      me.folderSortField = sortField;
+      me.folderSortOrder = SortOrder.ASC;
+    } else {
+      me.folderSortOrder = me.folderSortOrder === SortOrder.ASC ? SortOrder.DESC : SortOrder.ASC;
+    }
+
+    if (me.folderPagination && !isSearchView(me)) {
+      if (!hasMoreFolderFiles(me)) {
+        me.files = _this.sortFiles(me, me.files);
+        _this.showFiles(me, _this, false);
+        return;
+      }
+      me.folderPagination.page = 1;
+      me.folderPagination.loading = true;
+      _this.loadFolderPage(me, me.folderPagination.folderIdx, {
+        append: false,
+        revertSort: {
+          field: previousSortField,
+          order: previousSortOrder
+        }
+      });
+      return;
+    }
+
+    _this.showFiles(me, _this, true);
   },
 
   initLazyLoading: function () {
+    var _this = this;
     const rootElement = this.me.config.rootElement || document;
-    const lazyLoadDivs = rootElement.querySelectorAll('.lazy-load-background');
     const scrollContainer = rootElement.querySelector('.mf-files-box');
+    if (!scrollContainer) {
+      return;
+    }
 
-    const lazyLoad = (entries, observer) => {
-      entries.forEach(entry => {
+    const lazyLoad = function (entries, observer) {
+      entries.forEach(function (entry) {
         if (entry.isIntersecting) {
           const div = entry.target;
           const bgImage = div.getAttribute('data-background-src');
-          div.style.backgroundImage = `url(${bgImage})`;
+          div.style.backgroundImage = 'url(' + bgImage + ')';
           observer.unobserve(div);
+          _this.lazyLoadObserved.delete(div);
         }
       });
     };
 
-    const observer = new IntersectionObserver(lazyLoad, {
-      root: scrollContainer,
-      rootMargin: '0px',
-      threshold: 0
-    });
+    if (!this.lazyLoadObserver || this.lazyLoadRoot !== scrollContainer) {
+      if (this.lazyLoadObserver) {
+        this.lazyLoadObserver.disconnect();
+      }
+      this.lazyLoadObserved = new WeakSet();
+      this.lazyLoadRoot = scrollContainer;
+      this.lazyLoadObserver = new IntersectionObserver(lazyLoad, {
+        root: scrollContainer,
+        rootMargin: '0px',
+        threshold: 0
+      });
+    }
 
-    lazyLoadDivs.forEach(div => {
-      observer.observe(div);
+    const lazyLoadDivs = rootElement.querySelectorAll('.lazy-load-background');
+    lazyLoadDivs.forEach(function (div) {
+      if (_this.lazyLoadObserved.has(div)) {
+        return;
+      }
+      if (div.style.backgroundImage) {
+        return;
+      }
+      _this.lazyLoadObserved.add(div);
+      _this.lazyLoadObserver.observe(div);
     });
   },
 
+  createAiBadge: function (file) {
+    if (!hasAiLabel(file))
+      return null;
+
+    var badge = document.createElement('span');
+    badge.className = this.hasGdprWarning(file) ? 'mf-ai-label mf-ai-label-beside-gdpr' : 'mf-ai-label';
+    badge.innerHTML = aiLabelIcon;
+    badge.title = getAiLabelTooltip(file);
+    return badge;
+  },
+
+  hasGdprWarning: function (file) {
+    if (file.gdprStatus == undefined)
+      return false;
+
+    var status = file.gdprStatus.toUpperCase();
+    return status == 'MISSING_CONSENT' || status == 'INVALID_CONSENT' || status == 'AWAIT_CONSENT';
+  },
+
   showFiles: function (me, _this, isSearch) {
-    var warndiv = document.createElement('div');
-    warndiv.className = 'mf-gdpr-warning';
-    warndiv.title = me.lang.translate('FILE_VIEW_GDPR_WARNING');
-    warndiv.style.position = 'absolute';
-    warndiv.style.height = "16px";
-    warndiv.style.width = "16px";
-    warndiv.style.backgroundColor = '#EF60A3';
-    warndiv.style.color = 'white';
-    warndiv.style.fontFamily = 'Arial, Helvetica sans-serif';
-    warndiv.style.fontSize = '14px';
-    warndiv.style.lineHeight = '16px';
-    warndiv.style.fontWeight = 'bold';
-    warndiv.innerText = '!';
-    warndiv.style.textAlign = 'center';
-    warndiv.style.borderRadius = '50%';
+    if (isSearch !== true) {
+      isSearch = isSearchView(me);
+    }
+
+    var warndiv = createGdprWarndiv(me);
     me.fileviewArea.innerHTML = '';
     me.fileinfoArea.innerHTML = '';
 
-    me.files = _this.sortFiles(me, me.files);
+    // Only for search results
+    if (isSearch) {
+      me.files = _this.sortFiles(me, me.files);
+    }
 
     var smallWindow = false;
-    // if(me.fileviewArea.clientWidth <= 500)
-    //   smallWindow = true;
 
     var filesbox = document.createElement('div');
     filesbox.classList.add('mf-files-box');
@@ -254,327 +726,24 @@ export default {
       filesbox.classList.add('list-view');
     }
 
-    filesbox.style.position = 'absolute';
-    filesbox.style.top = '40px';
-    filesbox.style.bottom = '0';
-    filesbox.style.left = '0';
-    filesbox.style.right = '0';
-    filesbox.style.overflow = 'auto';
-    var i, le = me.files.length, div1, div2, col1, col2, col3, col4, row, markDiv;
     if (me.previewSize === 2) {
-      var header = document.createElement('div');
-      header.className = 'mf-header';
-      if (me.sortdir)
-        header.classList.add('mf-reversed');
-
-      header.style.cursor = 'pointer';
-      header.style.padding = '7px';
-
-      row = document.createElement('div');
-      row.className = 'mf-row';
-      col1 = document.createElement('div');
-      col1.style.flex = '3 1 100px';
-      if (me.sort == 1)
-        col1.className = 'mf-col mf-filename mf-active';
-      else
-        col1.className = 'mf-col mf-filename';
-      col1.style.overflowX = 'hidden';
-      col1.style.textOverflow = 'ellipsis';
-      col1.style.whiteSpace = 'nowrap';
-      col1.innerText = me.lang.translate('FILE_INFO_FILE_NAME');
-      col1.addEventListener('click', function (e) { _this.changeSort(me, _this, 1); }, false);
-
-      row.appendChild(col1);
-
-      col2 = document.createElement('div');
-      col2.style.textAlign = 'right';
-      col2.style.flexBasis = '100px';
-      if (me.sort == 2)
-        col2.className = 'mf-col mf-filesize mf-active';
-      else
-        col2.className = 'mf-col mf-filesize';
-      col2.innerText = me.lang.translate('FILE_INFO_FILE_SIZE');
-      col2.addEventListener('click', function (e) { _this.changeSort(me, _this, 2); }, false);
-
-      row.appendChild(col2);
-
-      col3 = document.createElement('div');
-      col3.style.flexBasis = '100px';
-
-      if (me.sort == 3)
-        col3.className = 'mf-col mf-active';
-      else
-        col3.className = 'mf-col';
-
-      col3.innerText = me.lang.translate('FILE_VIEW_MARKING');
-      col3.addEventListener('click', function (e) { _this.changeSort(me, _this, 3); }, false);
-      row.appendChild(col3);
-
-      col4 = document.createElement('div');
-      col4.style.flexBasis = '100px';
-      if (me.sort == 4)
-        col4.className = 'mf-col mf-date mf-active';
-      else
-        col4.className = 'mf-col mf-date';
-
-      col4.innerText = me.lang.translate('FILE_INFO_UPLOADED');
-      col4.addEventListener('click', function (e) { _this.changeSort(me, _this, 4); }, false);
-      if (me.sort == 4)
-        col4.classList.add('mf-active');
-      row.appendChild(col4);
-
-      header.appendChild(row);
-      filesbox.appendChild(header);
-
-
-      for (i = 0; i < le; i++) {
-        me.files[i].elem = document.createElement('div');
-        me.files[i].elem.dataset.idx = i;
-        me.files[i].elem.className = 'mf-file';
-        me.files[i].elem.style.padding = '5px';
-        me.files[i].elem.style.position = 'relative';
-        me.files[i].elem.style.cursor = 'pointer';
-
-        me.files[i].elem.addEventListener('click', function (e) { _this.fileClick(me, e, this, _this, isSearch); }, false);
-        if (me.files[i].gdprStatus != undefined) {
-          var s = me.files[i].gdprStatus.toUpperCase();
-          if (s == 'MISSING_CONSENT' || s == 'INVALID_CONSENT' || s == 'AWAIT_CONSENT') {
-            //me.files[i].elem.innerHTML += warndiv.outerHTML;
-          }
-        }
-
-        row = document.createElement('div');
-        row.className = 'mf-row';
-        col1 = document.createElement('div');
-        col1.style.flex = '3 1 100px';
-        col1.className = 'mf-col col-filename';
-        col1.style.overflowX = 'hidden';
-        col1.style.textOverflow = 'ellipsis';
-        col1.style.whiteSpace = 'nowrap';
-        col1.innerText = me.files[i].filename;
-
-        row.appendChild(col1);
-
-        col2 = document.createElement('div');
-        col2.style.flexBasis = '100px';
-        col2.style.textAlign = 'right';
-        col2.className = 'mf-col col-filesize';
-        col2.innerText = me.lang.humanFileSize(me.files[i].filesize);
-        row.appendChild(col2);
-
-        col3 = document.createElement('div');
-        col3.style.flexBasis = '100px';
-        col3.className = 'mf-col col-mark';
-
-        markDiv = document.createElement('div');
-        markDiv.style.width = '10px';
-        markDiv.style.height = '10px';
-        markDiv.style.display = 'inline-block';
-        markDiv.className = 'mf-mark mf-mark-' + me.files[i].mark;
-
-        col3.appendChild(markDiv);
-        row.appendChild(col3);
-
-        col4 = document.createElement('div');
-        col4.style.flexBasis = '100px';
-        col4.className = 'mf-col col-date';
-        col4.innerText = me.files[i].uploaded.substring(0, 10);
-        if (me.files[i].gdprStatus != undefined) {
-          var s = me.files[i].gdprStatus.toUpperCase();
-          if (s == 'MISSING_CONSENT' || s == 'INVALID_CONSENT' || s == 'AWAIT_CONSENT') {
-            warndiv.style.position = '';
-            warndiv.style.float = 'right';
-            col4.innerHTML += warndiv.outerHTML;
-          }
-        }
-        row.appendChild(col4);
-
-        me.files[i].elem.appendChild(row);
-
-        filesbox.appendChild(me.files[i].elem);
-      }
+      createListViewHeader(me, _this, filesbox);
     }
-    else {
-      if (me.previewSize === 0 || smallWindow) {
-        for (i = 0; i < le; i++) {
-          me.files[i].elem = document.createElement('div');
-          me.files[i].elem.title = me.files[i].name;
-          me.files[i].elem.className = 'mf-file';
-          me.files[i].elem.dataset.idx = i;
-          if (me.files[i].gdprStatus != undefined) {
-            var s = me.files[i].gdprStatus.toUpperCase();
-            if (s == 'MISSING_CONSENT' || s == 'INVALID_CONSENT' || s == 'AWAIT_CONSENT') {
-              me.files[i].elem.innerHTML += warndiv.outerHTML;
-            }
-          }
-          div1 = Object.assign(document.createElement('div'), { className: "mf-img" });
-          if (me.files[i].smallPreview) {
-            // Lazy loading
-            div1.classList.add("lazy-load-background");
-            div1.setAttribute("data-background-src", me.files[i].smallPreview);
 
-            div1.style.backgroundRepeat = 'no-repeat';
-            div1.style.backgroundPosition = 'center';
-          } else if (me.files[i].type.type == 'sound') {
-            div1.style.backgroundImage = 'url(//static.mediaflowpro.com/images/icons/filetype-651-dark.svg)';
-            div1.style.backgroundRepeat = 'no-repeat';
-            div1.style.backgroundPosition = 'center';
-            div1.style.backgroundSize = '80%';
-            div1.classList.add('mf-file-icon');
-          } else if (me.files[i].type.type == 'file' && me.files[i].type.extension == 'srt') {
-            div1.style.backgroundImage = 'url(//static.mediaflowpro.com/images/icons/filetype-592-dark.svg)';
-            div1.style.backgroundRepeat = 'no-repeat';
-            div1.style.backgroundPosition = 'center';
-            div1.style.backgroundSize = '80%';
-            div1.classList.add('mf-file-icon');
-          }
-          //#region file type
-          if (me.files[i]?.type?.extension != null) {
-            let spanFileType = document.createElement('span');
-            spanFileType.className = "mf-file-type";
-            spanFileType.innerText = me.files[i]?.type?.extension;
-            me.files[i].elem.appendChild(spanFileType);
-          }
-          //#endregion
-          //#region video file type
-          if (me.files[i]?.type?.type === 'video') {
-            let spanVideoFileType = document.createElement('span');
-            spanVideoFileType.className = "mf-file-type_video";
-            spanVideoFileType.innerHTML = `<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" fill="currentColor" class="bi bi-play-circle" viewBox="0 0 16 16">
-                                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"></path>
-                                            <path d="M6.271 5.055a.5.5 0 0 1 .52.038l3.5 2.5a.5.5 0 0 1 0 .814l-3.5 2.5A.5.5 0 0 1 6 10.5v-5a.5.5 0 0 1 .271-.445z"></path>
-                                          </svg>`;
-            me.files[i].elem.appendChild(spanVideoFileType);
-          }
-          //#endregion
-
-          const imgWrapper = Object.assign(document.createElement("div"), {
-            className: `mf-img-wrapper ${me.files[i].alpha ? "mf-file-alpha" : ""}`
-          });
-
-          imgWrapper.appendChild(div1)
-
-          me.files[i].elem.appendChild(imgWrapper);
-
-          let divLbl = document.createElement('div');
-          divLbl.className = 'mf-lbl';
-
-          const markDiv = Object.assign(document.createElement("span"), {
-            className: 'mf-mark mf-mark-' + me.files[i].mark
-          });
-          divLbl.appendChild(markDiv);
-
-          divLbl.appendChild(Object.assign(document.createElement("span"), {
-            innerText: me.files[i].name,
-            className: "mf-img-name"
-          }));
-          divLbl.appendChild(Object.assign(document.createElement("span"))); // dummy
-          me.files[i].elem.appendChild(divLbl);
-
-          me.files[i].elem.addEventListener('click', function (e) { _this.fileClick(me, e, this, _this, isSearch); }, false);
-          filesbox.appendChild(me.files[i].elem);
-        }
-      } else {
-        for (i = 0; i < le; i++) {
-          me.files[i].elem = document.createElement('div');
-          me.files[i].elem.title = me.files[i].name;
-          me.files[i].elem.className = 'mf-file';
-          me.files[i].elem.dataset.idx = i;
-          if (me.files[i].gdprStatus != undefined) {
-            var s = me.files[i].gdprStatus.toUpperCase();
-            if (s == 'MISSING_CONSENT' || s == 'INVALID_CONSENT' || s == 'AWAIT_CONSENT') {
-              me.files[i].elem.innerHTML += warndiv.outerHTML;
-            }
-          }
-          div1 = Object.assign(document.createElement('div'), { className: "mf-img" });
-
-          if (me.files[i].mediumPreview) {
-            // Lazy loading
-            div1.classList.add("lazy-load-background");
-            div1.setAttribute("data-background-src", me.files[i].mediumPreview);
-
-            div1.style.backgroundRepeat = 'no-repeat';
-            div1.style.backgroundPosition = 'center';
-          } else if (me.files[i].type.type == 'sound') {
-            div1.style.backgroundImage = 'url(//static.mediaflowpro.com/images/icons/filetype-651-dark.svg)';
-            div1.style.backgroundRepeat = 'no-repeat';
-            div1.style.backgroundPosition = 'center';
-            div1.style.backgroundSize = '80%';
-            div1.classList.add('mf-file-icon');
-          } else if (me.files[i].type.type == 'file' && me.files[i].type.extension == 'srt') {
-            div1.style.backgroundImage = 'url(//static.mediaflowpro.com/images/icons/filetype-592-dark.svg)';
-            div1.style.backgroundRepeat = 'no-repeat';
-            div1.style.backgroundPosition = 'center';
-            div1.style.backgroundSize = '80%';
-            div1.classList.add('mf-file-icon');
-          }
-          //#region file type
-          if (me.files[i]?.type?.extension != null) {
-            let spanFileType = document.createElement('span');
-            spanFileType.className = "mf-file-type";
-            spanFileType.innerText = me.files[i]?.type?.extension;
-            me.files[i].elem.appendChild(spanFileType);
-          }
-          //#endregion
-          //#region video file type
-          if (me.files[i]?.type?.type === 'video') {
-            let spanVideoFileType = document.createElement('span');
-            spanVideoFileType.className = "mf-file-type_video";
-            spanVideoFileType.innerHTML = `<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" fill="currentColor" class="bi bi-play-circle" viewBox="0 0 16 16">
-                                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"></path>
-                                            <path d="M6.271 5.055a.5.5 0 0 1 .52.038l3.5 2.5a.5.5 0 0 1 0 .814l-3.5 2.5A.5.5 0 0 1 6 10.5v-5a.5.5 0 0 1 .271-.445z"></path>
-                                          </svg>`;
-            me.files[i].elem.appendChild(spanVideoFileType);
-          }
-          //#endregion
-
-          const imgWrapper = Object.assign(document.createElement("div"), {
-            className: `mf-img-wrapper ${me.files[i].alpha ? "mf-file-alpha" : ""}`
-          });
-
-          imgWrapper.appendChild(div1);
-
-          me.files[i].elem.appendChild(imgWrapper);
-
-          let divLbl = document.createElement('div');
-          divLbl.className = 'mf-lbl';
-
-          const markDiv = Object.assign(document.createElement("span"), {
-            className: 'mf-mark mf-mark-' + me.files[i].mark
-          });
-          divLbl.appendChild(markDiv);
-
-          divLbl.appendChild(Object.assign(document.createElement("span"), {
-            innerText: me.files[i].name,
-            className: "mf-img-name"
-          }));
-          divLbl.appendChild(Object.assign(document.createElement("span"))); // dummy
-          me.files[i].elem.appendChild(divLbl);
-
-          me.files[i].elem.addEventListener('click', function (e) { _this.fileClick(me, e, this, _this, isSearch); }, false);
-          filesbox.appendChild(me.files[i].elem);
-        }
-      }
+    var i, le = me.files.length;
+    for (i = 0; i < le; i++) {
+      filesbox.appendChild(createFileElement(me, _this, me.files[i], i, isSearch, warndiv, smallWindow));
     }
+
     var filesboxHdr = document.createElement('div');
     filesboxHdr.className = 'mf-filesbox-header';
     var t = document.createElement('span');
     t.className = 'mf-folderinfo';
 
-    if (isSearch)
+    if (isSearch) {
       t.innerText = me.lang.translateWithParams('SEARCH_RESULTS', [me.searchquery, me.files.length]);
-    else {
-      if (me.files.length === 0) {
-        t.innerText = me.lang.translate('FOLDER_NOFILES');
-      } else {
-        if (me.files.length === 1) {
-          t.innerText = me.lang.translate('FOLDER_HDR_S');
-        }
-        else {
-
-          t.innerText = me.lang.translateWithParams('FOLDER_HDR_P', [me.files.length]);
-        }
-      }
+    } else {
+      t.innerText = _this.getFolderHeaderText(me);
     }
     filesboxHdr.appendChild(t);
     me.fileviewArea.appendChild(filesboxHdr);
@@ -604,7 +773,7 @@ export default {
         smallPreviews.addEventListener('click', function () {
           if (me.config.disableLocalStorage !== true) {
             if (window.localStorage) {
-              localStorage.setItem('MF.previewSize', 0);
+              localStorage.setItem('MF.previewSize', '0');
             }
           }
           me.previewSize = 0;
@@ -612,8 +781,10 @@ export default {
           me.item.dataset.activePreviewType = "small";
         }, false);
         smallPreviewsIcon.addEventListener('click', function () {
-          //console.log('click')
-          this.nextSibling.click();
+          var sibling = this.nextSibling;
+          if (sibling instanceof HTMLElement) {
+            sibling.click();
+          }
         }, false);
       }
       smallPreviews.innerText = this.me.lang.translate('FILE_VIEW_SMALLIMAGES');
@@ -635,7 +806,7 @@ export default {
         largePreviews.addEventListener('click', function () {
           if (me.config.disableLocalStorage !== true) {
             if (window.localStorage) {
-              localStorage.setItem('MF.previewSize', 1);
+              localStorage.setItem('MF.previewSize', '1');
             }
           }
           me.previewSize = 1;
@@ -643,7 +814,10 @@ export default {
           me.item.dataset.activePreviewType = "large";
         }, false);
         largePreviewsIcon.addEventListener('click', function () {
-          this.nextSibling.click();
+          var sibling = this.nextSibling;
+          if (sibling instanceof HTMLElement) {
+            sibling.click();
+          }
         }, false);
       }
       sizeSelector.appendChild(largePreviewsIcon);
@@ -664,7 +838,7 @@ export default {
         noPreviews.addEventListener('click', function () {
           if (me.config.disableLocalStorage !== true) {
             if (window.localStorage) {
-              localStorage.setItem('MF.previewSize', 2);
+              localStorage.setItem('MF.previewSize', '2');
             }
           }
           me.previewSize = 2;
@@ -672,7 +846,10 @@ export default {
           me.item.dataset.activePreviewType = "list";
         }, false);
         noPreviewsIcon.addEventListener('click', function () {
-          this.nextSibling.click();
+          var sibling = this.nextSibling;
+          if (sibling instanceof HTMLElement) {
+            sibling.click();
+          }
         }, false);
       }
       noPreviews.innerText = this.me.lang.translate('FILE_VIEW_LISTVIEW');
@@ -683,7 +860,37 @@ export default {
     }
     me.fileviewArea.appendChild(filesbox);
 
+    if (!isSearch) {
+      var loadMoreFooter = _this.createLoadMoreFooter(me, _this);
+      if (loadMoreFooter) {
+        filesbox.appendChild(loadMoreFooter);
+      }
+    }
+
     this.initLazyLoading();
+
+    if (!isSearch) {
+      _this.highlightSelectedFileInList(me);
+    }
+  },
+  highlightSelectedFileInList: function (me) {
+    if (!me.selectedFileId || me.selectedFileId < 0) {
+      return;
+    }
+
+    var i, idx = -1;
+    for (i = 0; i < me.files.length; i++) {
+      if (me.files[i].elem) {
+        me.files[i].elem.classList.remove('mf-selected');
+      }
+      if (me.files[i].id === me.selectedFileId) {
+        idx = i;
+      }
+    }
+
+    if (idx >= 0 && me.files[idx].elem) {
+      me.files[idx].elem.classList.add('mf-selected');
+    }
   },
   fileClick: function (me, e, _elem, _this, issearch) {
     if (!_elem || !_elem.dataset || typeof (_elem.dataset.idx) !== 'string')
@@ -697,37 +904,28 @@ export default {
     _this.clickCallback(me, idx, issearch);
   },
   setInitialFile: function (me, id, _this) {
-    if (typeof id === 'number')
-      me.selectedFileId = id;
-    else
-      me.selectedFileId = id.id;
+    var fileId = typeof id === 'number' ? id : id.id;
+    me.selectedFileId = fileId;
+
     var idx = -1;
     for (var i = 0; i < me.files.length; i++) {
-      if (me.files[i].id === id) {
+      if (me.files[i].id === fileId) {
         idx = i;
         break;
       }
     }
+
     if (idx >= 0) {
       me.files[idx].elem.className = 'mf-file mf-selected';
       _this.clickCallback(me, idx, false);
+      return;
     }
+
+    _this.loadInitialFileById(me, _this, fileId);
   },
 
-  sortClick: function (me, _this, sortcol) {
-    //console.log('sorting by ' + sortcol);
-    switch (sortcol) {
-      case 1:
-        me.files = me.files.sort(fileNameComparer);
-        break;
-      case 2:
-        me.files = me.files.sort(fileSizeComparer);
-        break;
-      case 2:
-        me.files = me.files.sort(fileSizeComparer);
-        break;
-    }
-    _this.showFiles(me, _this);
+  loadInitialFileById: function (me, _this, fileId) {
+    _this.clickCallback(me, -1, false, fileId);
   }
 
 };

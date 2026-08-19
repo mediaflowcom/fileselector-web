@@ -1,24 +1,59 @@
 let translations = {};
+let dateTimeTranslations = {};
+let damInfoTranslations = {};
 const defaultLangCode = 'sv-SE';
 const cacheTime = 1000 * 60 * 60 * 3; // 3 hours
 const translationBase = 'fileSelector';
+const dateTimeTranslationBase = 'app.dateTime';
+const damInfoTranslationBase = 'app.damInfo';
 const translationSectionsMappings = {CROPPER_: 'cropper', FILE_INFO_: 'fileInfo', FILE_VIEW_: 'fileView'};
-const validLanguageCodes = ['en-GB', 'en-US', 'sv-SE', 'de-DE', 'nb-NO', 'fi-FI'];
+const validLanguageCodes = ['en-GB', 'en-US', 'sv-SE', 'de-DE', 'nb-NO', 'fi-FI', 'fr-FR', 'it-IT'];
 const localStorageName = 'fsTranslations';
+const dateTimeLocalStorageName = 'fsDateTimeTranslations';
+const damInfoLocalStorageName = 'fsDamInfoTranslations';
+const damInfoFallbacks = {aiLabel: 'AI label', aiLabelCreated: 'Created by AI', aiLabelModified: 'Modified by AI'};
 let currentLangCode = defaultLangCode;
 
 export async function initTranslations(locale) {
   const _languageCode = locale.replace(/_/g, '-'); // Replace underscores with hyphens to match the format used in the API, i.e. 'en_GB' to 'en-GB'
   const _langCode = validLanguageCodes.find((code) => code === _languageCode) ?? defaultLangCode;
   currentLangCode = _langCode;
-  
+
   let _translations = getWithExpiry(localStorageName);
+  let _dateTimeTranslations = getWithExpiry(dateTimeLocalStorageName);
+  let _damInfoTranslations = getWithExpiry(damInfoLocalStorageName);
+
+  const loadPromises = [];
 
   if (_translations === null || _translations[currentLangCode] === undefined) {
-    _translations = await loadTranslations(currentLangCode);
+    loadPromises.push(
+      loadDictionary(currentLangCode, translationBase, localStorageName).then((result) => {
+        _translations = result;
+      })
+    );
   }
 
+  if (_dateTimeTranslations === null || _dateTimeTranslations[currentLangCode] === undefined) {
+    loadPromises.push(
+      loadDictionary(currentLangCode, dateTimeTranslationBase, dateTimeLocalStorageName).then((result) => {
+        _dateTimeTranslations = result;
+      })
+    );
+  }
+
+  if (_damInfoTranslations === null || _damInfoTranslations[currentLangCode] === undefined) {
+    loadPromises.push(
+      loadDictionary(currentLangCode, damInfoTranslationBase, damInfoLocalStorageName).then((result) => {
+        _damInfoTranslations = result;
+      })
+    );
+  }
+
+  await Promise.all(loadPromises);
+
   translations = _translations;
+  dateTimeTranslations = _dateTimeTranslations;
+  damInfoTranslations = _damInfoTranslations;
 }
 
 /** Get the current language code
@@ -36,6 +71,27 @@ export function getTranslationFromLegacyKey(key, params = null) {
   const translationKey = mappedResponse.translationKey;
 
   return _getTranslation(translationSection, translationKey, params);
+}
+
+/** Get a translation from the flat app.dateTime dictionary.
+ * @param {string} key - dateTime key (e.g. 'January', 'Monday', 'today').
+ * @returns {string} Translation for the current language, falling back to the default language, then the key itself.
+ */
+export function getDateTimeTranslation(key) {
+  return dateTimeTranslations[currentLangCode]?.[key]
+    ?? dateTimeTranslations[defaultLangCode]?.[key]
+    ?? key;
+}
+
+/** Get a translation from the shared app.damInfo dictionary.
+ * @param {string} key - damInfo key (e.g. 'aiLabelCreated').
+ * @returns {string} Translation for the current language, falling back to the default language, then a hardcoded English fallback.
+ */
+export function getDamInfoTranslation(key) {
+  return damInfoTranslations[currentLangCode]?.[key]
+    ?? damInfoTranslations[defaultLangCode]?.[key]
+    ?? damInfoFallbacks[key]
+    ?? key;
 }
 
 function _getTranslation(section, key, params) {
@@ -56,24 +112,23 @@ function _getTranslation(section, key, params) {
 }
 
 
-async function loadTranslations(languageCode) {
+async function loadDictionary(languageCode, dictionaryBase, storageKey) {
   const languageCodes = new Set([languageCode, defaultLangCode]); // always load default language as well
   let _translations = {};
 
   try {
     for (const langCode of languageCodes) {
-      const response = await fetch(`https://api.mediaflow.com/1/dictionary/${translationBase}/${langCode}`);
+      const response = await fetch(`https://api.mediaflow.com/1/dictionary/${dictionaryBase}/${langCode}`);
       if (!response.ok) {
-        console.error(`Error fetching translations for language code: ${langCode}`);
+        console.error(`Error fetching translations for ${dictionaryBase} language code: ${langCode}`);
         continue;
       }
       const dic = await response.json();
       _translations[langCode] = dic;
     }
-    // Add to localStorage
-    setWithExpiry(localStorageName, _translations, cacheTime);
+    setWithExpiry(storageKey, _translations, cacheTime);
   } catch (error) {
-    console.error('Error fetching translations:', error);
+    console.error(`Error fetching ${dictionaryBase} translations:`, error);
   }
 
   return _translations;
