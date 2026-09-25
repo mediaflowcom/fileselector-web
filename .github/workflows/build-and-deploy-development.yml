@@ -106,4 +106,11 @@ jobs:
 
     steps:
       - name: Post to slack
-        run: /bin/slacka "Successfully deployed \`${{ github.repository }}\` to *DEV (K8s)*, committed to *${GITHUB_REF_NAME}* branch by ${{ github.actor }} \`(${{ needs.setup.outputs.mf-message }})\`, version \`${{ needs.setup.outputs.mf-version }}\`. *Thank you ${{ github.actor }}!*"
+        # the commit message reaches the shell as an env var: inlining it lets backticks
+        # and quotes in the message break the command
+        env:
+          MF_REPOSITORY: ${{ github.repository }}
+          MF_ACTOR: ${{ github.actor }}
+          MF_MESSAGE: ${{ needs.setup.outputs.mf-message }}
+          MF_VERSION: ${{ needs.setup.outputs.mf-version }}
+        run: /bin/slacka "Successfully deployed \`$MF_REPOSITORY\` to *DEV (K8s)*, committed to *$GITHUB_REF_NAME* branch by $MF_ACTOR \`($MF_MESSAGE)\`, version \`$MF_VERSION\`. *Thank you $MF_ACTOR!*"
