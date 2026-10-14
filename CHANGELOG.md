@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
+# Unreleased
+
+### Added
+- CDN support. At start-up `isUsingCDN()` decides whether the Mediaflow CDN is used:
+  it is when the customer's `activeModules` (`users/me`) contains `cdn` (`cdnId` 2 for now). When it is, a CDN resource is created
+  (`POST /1/cdn/resources`) for the selected file and the file object's `url` is the
+  stable CDN URL. Crop, size and format are appended as transform parameters
+  (`w`, `h`, `rg`, `fit`, `f`). A temporary download URL is never delivered when CDN is on.
+- New `cdn` property on the file object: `{ resourceId, url, versionedUrl, status, params }`.
+- New events `cdnResourceCreated` and `cdnError`.
+- Optional `cdnWaitForReady` setting: wait until the CDN resource is `completed` before
+  delivering.
+
+### Changed
+- With CDN on, `downloads/{format}` is no longer called. A 503 when creating the CDN
+  resource is retried once. Other failing CDN API calls and file
+  types the CDN can't publish (fonts, Office documents, archives) show an error. The info
+  panel disables "use file" for unsupported types.
+- Video is not affected by CDN on/off.
+- The API service accepts `202`/`204` responses, reports network errors to the error
+  callback and passes the status and error body as a second argument.
+
 # 2.6.0 2026-08-19
 
 ### Added

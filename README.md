@@ -43,3 +43,17 @@ npm run serve
 ```
 npm run build
 ```
+
+## CDN support
+When `isUsingCDN()` (in `fileselector.js`) returns `true` — the customer has the `cdn` module in `users/me?fields=activeModules` — selected files are published to the Mediaflow CDN instead of being delivered as a temporary download URL. See `features/cdn-support.md` and `features/cdn-support-plan.md`.
+
+- `url` in the file object is the stable CDN URL. For images the crop/size/format selection is appended as query parameters, for example `…/hero.jpg?w=800&h=600&rg=10,10,40,30`.
+- `cdn` holds `{ resourceId, url, versionedUrl, status, params }`. `cdn.url` is the URL without parameters.
+- Video, `downloadFormat: 'stream'` and `returnValue: 'fileObject'` are unaffected.
+- File types the CDN can't publish, and failing CDN API calls, show an error. A 503 when creating the resource is retried once first. With CDN on, a temporary URL is never delivered.
+- Events: `cdnResourceCreated` and `cdnError` (`{ id, mediaId, reason, error }`).
+- `cdnWaitForReady: true` waits (up to 15 s) until the resource is `completed`. Without it, the URL returns `503 Retry-After` for a short while after creation.
+
+**Lifecycle:** the file selector only creates resources. The integration is responsible for `PUT`/`PATCH`/`DELETE` using `cdn.resourceId`. Selecting the same image again reuses the same resource, so only delete a resource when nothing else uses it.
+
+**Translations:** `CDN_INIT_FAILED`, `CDN_CREATE_FAILED`, `CDN_FILETYPE_NOT_SUPPORTED` and `FILE_INFO_CDN_NOT_SUPPORTED` should be added to the `fileSelector` dictionary. Until then English fallback texts are used.

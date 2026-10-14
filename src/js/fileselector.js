@@ -9,9 +9,12 @@ import fileinfo from './modules/fileinfo';
 import cropperview from './modules/cropperview';
 import movieview from './modules/movieview';
 import toparea from './modules/toparea';
+import { getCdnMode, isCdnSupported, isDownloadDenied, isVideo, showCdnError, publish } from './services/cdn';
 
 import "../css/cropper.min.css";
 import "../css/fileselector.css";
+
+const CDN_MODULE = 'cdn'; // activeModules value that enables the CDN
 
 export default class FileSelector {
 	constructor(item, config) {
@@ -71,6 +74,8 @@ export default class FileSelector {
           me.lang = lang(me.config.locale);
           me.isDownloading = false;
           me.api = MFAPI(config.apiBase, config);
+          me.cdn = { pending: true, enabled: false, cdnId: null, error: null };
+          me.cdnReady = me._initCdn();
           me.version = '1.0.0';
           me._setupResponsiveUI();
           me._buildUI();		
@@ -88,6 +93,44 @@ export default class FileSelector {
 			link.href = `https://mfstatic.com/css/fileselector.min.css?v=${FS_VERSION}`;
 			document.getElementsByTagName('head')[0].appendChild(link);
 		}
+	}
+
+	/**
+	 * Decides whether the CDN shall be used and retrieves the cdnId (this.cdn.cdnId).
+	 * CDN is used when the customer has the 'cdn' module active.
+	 * A failing call or an unexpected response throws (-> CDN_INIT_FAILED in _initCdn).
+	 * @returns {Promise<boolean>}
+	 */
+	async isUsingCDN() {
+		const me = this;
+		const result = await new Promise(function(resolve, reject) {
+			me.api.get('users/me?fields=all', resolve, function(message, info) {
+				reject({ message: message, status: info?.status, body: info?.body });
+			});
+		});
+		console.log('CDN: users/me?fields=activeModules response', result);
+		if (!Array.isArray(result) || !result[0] || !Array.isArray(result[0].activeModules)) {
+			throw { message: 'ERR:GET,users/me,INVALID_RESPONSE', body: result };
+		}
+		me.cdn.cdnId = 2; // TODO: fetch the cdnId from the Mediaflow API when the source is known
+		return result[0].activeModules.includes(CDN_MODULE);
+	}
+
+	/**
+	 * @private
+	 * Runs isUsingCDN() once at start-up. A failure is shown right away; since the customer's
+	 * CDN choice is then unknown, every later selection shows the error again instead of delivering.
+	 */
+	async _initCdn() {
+		const me = this;
+		try {
+			me.cdn.enabled = (await me.isUsingCDN()) === true;
+		} catch (e) {
+			me.cdn.enabled = false;
+			me.cdn.error = e || 'ERR:CDN,INIT';
+			showCdnError(me, 'CDN_INIT_FAILED', e);
+		}
+		me.cdn.pending = false;
 	}
 
 	folderClick(me, idx) {
@@ -370,6 +413,21 @@ export default class FileSelector {
 			if((me.file.type.type != 'image' && me.file.type.type != 'video') || me.config.downloadFormat === 'original') {
 				if(me.isDownloading)
 					return false;
+				// Video is never routed to the CDN
+				if (!isVideo(me.file)) {
+					const cdnMode = getCdnMode(me);
+					if (cdnMode === 'pending') {
+						me.cdnReady.then(function() { me.clickDone(); });
+						return true;
+					}
+					if (cdnMode === 'error') {
+						showCdnError(me, 'CDN_INIT_FAILED', me.cdn.error);
+						return false;
+					}
+					if (cdnMode === 'on') {
+						return me._deliverViaCdn();
+					}
+				}
 			  	me.isDownloading = true;
 				me.api.get('file/' + me.file.id + '/downloads/0', function(o) {
 					me.isDownloading = false;
@@ -383,26 +441,7 @@ export default class FileSelector {
 								if(xhr.status === 200 || xhr.status === 201) {
 									try {
 										var o = JSON.parse(xhr.responseText);
-										me.config.success({
-											url: o.url, 
-											name:me.file.name, 
-											filename:me.file.filename, 
-											mediaId: me.file.mediaId, 
-											id:  me.file.id, 
-											folderId: me.selectedFolderId,
-											basetype: me.file.type.type, 
-											filetype: me.file.type.extension, 
-											width: me.file.width, 
-											height: me.file.height, 
-											photographer: me.file.photographer,
-											altText: me.config.autosetAltText !== false ? me.file.alttext : "",
-											// Extra metadata:
-											additionalInfo: me.file.additionalInfo,
-											customFields: me.file.customFields,
-											description: me.file.description,
-											instructions: me.file.instructions,
-											keywords: me.file.keywords
-										});
+										me.config.success(me._buildFileResult(o.url));
 									} catch(e) {
 										alert(me.lang.translate('DOWNLOAD_FAILED'));
 									}
@@ -412,26 +451,7 @@ export default class FileSelector {
 						xhr.send();
 					} else {
 						setTimeout(function() { 
-							me.config.success({
-								url: downloadURL, 
-								name:me.file.name, 
-								filename:me.file.filename,
-								mediaId: me.file.mediaId, 
-								id: me.file.id, 
-								folderId: me.selectedFolderId,
-								basetype:me.file.type.type, 
-								filetype:me.file.type.extension, 
-								width:me.file.width, 
-								height:me.file.height, 
-								photographer:me.file.photographer,
-								altText: me.config.autosetAltText !== false ? me.file.alttext : "",
-								// Extra metadata:
-								additionalInfo: me.file.additionalInfo,
-								customFields: me.file.customFields,
-								description: me.file.description,
-								instructions: me.file.instructions,
-								keywords: me.file.keywords
-							});
+							me.config.success(me._buildFileResult(downloadURL));
 						}, 5);
 					}
 				}, function(o) {
@@ -473,6 +493,62 @@ export default class FileSelector {
 		return false;
 	}
 
+
+	/**
+	 * @private
+	 * File object for non-image files / downloadFormat 'original'.
+	 */
+	_buildFileResult(url) {
+		const me = this;
+		return {
+			url: url,
+			name: me.file.name,
+			filename: me.file.filename,
+			mediaId: me.file.mediaId,
+			id: me.file.id,
+			folderId: me.selectedFolderId,
+			basetype: me.file.type.type,
+			filetype: me.file.type.extension,
+			width: me.file.width,
+			height: me.file.height,
+			photographer: me.file.photographer,
+			altText: me.config.autosetAltText !== false ? me.file.alttext : "",
+			// Extra metadata:
+			additionalInfo: me.file.additionalInfo,
+			customFields: me.file.customFields,
+			description: me.file.description,
+			instructions: me.file.instructions,
+			keywords: me.file.keywords
+		};
+	}
+
+	/**
+	 * @private
+	 * CDN delivery for non-image files / downloadFormat 'original' (no transform parameters).
+	 * Replaces downloads/0 and the permanentURL request - a temporary URL is never delivered.
+	 */
+	_deliverViaCdn() {
+		const me = this;
+		if (!isCdnSupported(me.file)) {
+			showCdnError(me, 'CDN_FILETYPE_NOT_SUPPORTED', { typeId: me.file.type?.id, extension: me.file.type?.extension });
+			return false;
+		}
+		if (isDownloadDenied(me)) {
+			alert(me.lang.translate('CROPPER_PERMISSION_DENIED'));
+			return false;
+		}
+		me.isDownloading = true;
+		publish(me, me.file, {}).then(function(result) {
+			me.isDownloading = false;
+			const fileResult = me._buildFileResult(result.url);
+			fileResult.cdn = result.cdn;
+			me.config.success(fileResult);
+		}, function(err) {
+			me.isDownloading = false;
+			showCdnError(me, 'CDN_CREATE_FAILED', err);
+		});
+		return true;
+	}
 
 	/**
 	 * Checks whether a given file has a valid type based on its category, extension, or ID.

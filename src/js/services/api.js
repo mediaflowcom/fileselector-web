@@ -130,7 +130,12 @@ export default function MFAPI(baseURI, config)
       }    
       xhr.onload = function() {
         if (xhr.readyState === 4) {
-          if(xhr.status === 200 || xhr.status === 201) {
+          // 202 Accepted: e.g. a new CDN resource. 204 No Content: e.g. DELETE.
+          if(xhr.status === 200 || xhr.status === 201 || xhr.status === 202 || xhr.status === 204) {
+            if (xhr.status === 204 || xhr.responseText === '') {
+              setTimeout(function(){success(null, null);}, 0);
+              return;
+            }
             try {
               var o = JSON.parse(xhr.responseText);
               var totalCount = null;
@@ -143,7 +148,8 @@ export default function MFAPI(baseURI, config)
               fail('ERR:' + method + ',JSON');
             }
           } else {
-            fail('ERR:' + method + ',' + xhr.status);
+            // Second argument gives callers that need it the raw status and error body (e.g. the CDN API returns plain-text errors)
+            fail('ERR:' + method + ',' + xhr.status, { status: xhr.status, body: xhr.responseText });
           }
         }
       };
@@ -155,6 +161,9 @@ export default function MFAPI(baseURI, config)
     }, (error) => {
       fail(error);
     });
+    xhr.onerror = function() {
+      fail('ERR:' + method + ',NETWORK', { status: 0, body: '' });
+    };
   }
 
   return {

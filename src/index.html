@@ -155,6 +155,7 @@
       <select id="preset">
         <option value="minimum">Minimum (uses FS:s internal default values)</option>
         <option value="minimumPreview">Minimum (with file preview)</option>
+        <option value="permanentURLPreview">Permanent URL (with file preview)</option>
       </select>
       <div>
         <label>&nbsp;</label><span style="font-size: .75rem">Select a preset to get predefined settings for the File
@@ -172,7 +173,7 @@
   </div>
 
   <script type="module">
-    import { bareMinimumSettings, bareMinimumSettingsWithPreview } from './bareMinimum.js';
+    import { bareMinimumSettings, bareMinimumSettingsWithPreview, permanentURLSettingsWithPreview } from './bareMinimum.js';
     
     const loadCredentials = async () => {
       try {
@@ -212,12 +213,15 @@
         case "minimumPreview":
           currentFsSettings = { ...bareMinimumSettingsWithPreview }
           break;
+        case "permanentURLPreview":
+          currentFsSettings = { ...permanentURLSettingsWithPreview }
+          break;
         default:
           currentFsSettings = { ...bareMinimumSettings }
           break;
       }
 
-      currentFsSettings = { ...currentFsSettings, locale: lang, client_id: clientId, client_secret: clientSecret, refresh_token: refreshToken, apiBase: apiBase, oauthBase: oauthBase };
+      currentFsSettings = { ...currentFsSettings, locale: lang, client_id: clientId, client_secret: clientSecret, refresh_token: refreshToken, apiBase: apiBase, oauthBase: oauthBase, username: 'optiadmin' };
 
       myFileSelector = new FileSelector("test1", {...currentFsSettings });
     }
