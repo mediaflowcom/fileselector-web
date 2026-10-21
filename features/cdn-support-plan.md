@@ -8,6 +8,10 @@ _Rev 5 (2026-10-13): `isUsingCDN()` now decides via `GET users/me?fields=activeM
 
 _Rev 6 (2026-10-13): decisions — module key `'cdn'` (response is logged with `console.log`), `cdnId` source still unknown (fixed `2`), **one automatic retry** of `POST cdn/resources` on 503. Real `isUsingCDN()`, the info-panel pending fix and the retry are implemented._
 
+_Rev 8 (2026-10-20): the CDN API does not accept the file selector's normal credentials → new required `cdnAuth` setting (separate client_id/secret/refresh_token, or an access token) used through a second `MFAPI` instance (`me.cdnApi`) for `cdn/resources` only; new error `CDN_AUTH_FAILED` (§11)._
+
+_Rev 7 (2026-10-14): requests from the Optimizely 12 integration — CDN is **opt-in** via `useCdn: true` (default `false`, permanently), `mediaId` added to the image file object, `filetype`/auth notes in the README, CDN preset for the test page._
+
 ## Status
 
 | Part | State |
@@ -20,7 +24,11 @@ _Rev 6 (2026-10-13): decisions — module key `'cdn'` (response is logged with `
 | One automatic retry on 503 for `POST cdn/resources` | Done (§2) |
 | README, CHANGELOG | Done (CHANGELOG under "Unreleased", no version bump yet) |
 | Translations in the `fileSelector` dictionary | **To do** (English fallbacks in `cdn.js` until then) |
-| CDN preset for the test page | Not done (not needed while CDN is decided by the API) |
+| `useCdn` opt-in (default `false`) | Done (§1) |
+| `mediaId` in the image file object | Done |
+| CDN preset for the test page | Done — "CDN, useCdn: true (with file preview)" (`useCdn` + `cdnWaitForReady`) |
+| `POST cdn/resources` allowed for all auth modes / tokens used by integrations | Answered: **no** — the normal credentials are rejected; separate `cdnAuth` credentials (§11) |
+| `cdnAuth` + `me.cdnApi` + `CDN_AUTH_FAILED` | Done (§11) |
 
 ## Goal
 
@@ -32,8 +40,9 @@ When `isUsingCDN()` says yes, every file object that today carries a temporary d
 
 | Topic | Decision |
 |---|---|
-| Browser → management API | `POST /1/cdn/resources` works from the browser with CORS for all three auth modes → call it directly via `MFAPI`, no backend needed. |
-| CDN on/off | `isUsingCDN()` calls `GET users/me?fields=activeModules`; CDN is on when the customer's `activeModules` contains the CDN module. |
+| Browser → management API | `POST /1/cdn/resources` works from the browser with CORS → call it directly via `MFAPI`, no backend needed. |
+| CDN credentials | The CDN API doesn't accept the normal credentials. Separate `cdnAuth` credentials, required with `useCdn: true`, used only for `cdn/resources` (§11). |
+| CDN on/off | Only when the integration sets `useCdn: true` (default `false`). Then `isUsingCDN()` calls `GET users/me?fields=activeModules`; CDN is on when the customer's `activeModules` contains the CDN module. |
 | `cdnId` | Will be fetched from the Mediaflow API later. Fixed **2** for now. |
 | CDN filename | Resource is created with the original `me.file.filename`; the (possibly edited) name is still returned in `filename`. |
 | `downloads/{format}` call | **Removed** on the CDN path (see §5). |
@@ -58,7 +67,9 @@ When `isUsingCDN()` says yes, every file object that today carries a temporary d
 
 ### 1. `isUsingCDN()` — decision at construction
 
-Already in place (unchanged): `_initCdn()` runs once from the constructor right after `me.api = MFAPI(...)`, stores the promise in `me.cdnReady` and keeps the state in `me.cdn = { pending, enabled, cdnId, error }`. Delivery code reads it through `getCdnMode(me)` (`pending` / `error` / `on` / `off`); while `pending` a click is queued until `me.cdnReady` resolves. If `isUsingCDN()` rejects → `CDN_INIT_FAILED` right away, and every later selection shows the error instead of delivering (the customer's choice is unknown, so no temporary URL may slip through). No integration-side override.
+Already in place (unchanged): `_initCdn()` runs once from the constructor right after `me.api = MFAPI(...)`, stores the promise in `me.cdnReady` and keeps the state in `me.cdn = { pending, enabled, cdnId, error }`. Delivery code reads it through `getCdnMode(me)` (`pending` / `error` / `on` / `off`); while `pending` a click is queued until `me.cdnReady` resolves. If `isUsingCDN()` rejects → `CDN_INIT_FAILED` right away, and every later selection shows the error instead of delivering (the customer's choice is unknown, so no temporary URL may slip through).
+
+**Opt-in (Rev 7):** `_initCdn()` first checks `config.useCdn === true`. Otherwise it sets `enabled = false, pending = false` synchronously (no API call) → mode `off`, identical to 2.6.0. Reason: the file selector is loaded live from mfstatic.com by every installed integration version; integrations that don't handle CDN URLs (e.g. Optimizely add-on ≤ 1.2.x, which downloads `url` server-side without retry) must never receive them. The default stays `false` permanently.
 
 **Implementation of `isUsingCDN()`** (`fileselector.js`):
 
@@ -187,8 +198,25 @@ The file selector **only creates** resources (`POST`, idempotent). It never call
 
 - Preset in `src/js/presets/` with CDN enabled for the dev test page.
 - README: CDN behaviour (no temporary URLs when on, video excluded), the `cdn` property, `cdnError` event, `cdnWaitForReady` option, lifecycle responsibilities (§9).
-- Translations: add `CDN_INIT_FAILED`, `CDN_CREATE_FAILED`, `CDN_FILETYPE_NOT_SUPPORTED`, `FILE_INFO_CDN_NOT_SUPPORTED` to the `fileSelector` dictionary.
+- Translations: add `CDN_INIT_FAILED`, `CDN_CREATE_FAILED`, `CDN_AUTH_FAILED`, `CDN_FILETYPE_NOT_SUPPORTED`, `FILE_INFO_CDN_NOT_SUPPORTED` to the `fileSelector` dictionary.
 - CHANGELOG entry, version bump → 2.7.0.
+
+### 11. CDN credentials (`cdnAuth`, Rev 8)
+
+The CDN API doesn't accept the file selector's normal credentials. With `useCdn: true` the integration must also pass:
+
+```js
+cdnAuth: { client_id, client_secret, refresh_token, username /* optional */ }
+// or
+cdnAuth: { auth: 'accesstoken', accesstoken }   // token issued by the integration's backend
+```
+
+- `cdn.js` `createCdnApi(config)` creates a second `MFAPI` instance (`me.cdnApi`) from `cdnAuth`, with the same `apiBase`/`oauthBase`. Each instance keeps its own token, so no changes in `api.js`.
+- `request()` in `cdn.js` (`POST cdn/resources`, readiness polling) uses `me.cdnApi`; everything else — including `users/me` in `isUsingCDN()` — keeps using `me.api`, for every `auth` mode.
+- `_initCdn()`: `cdnAuthProblem(config)` validates `cdnAuth` first; missing/incomplete → `CDN_INIT_FAILED` without calling `users/me` (invariant: no temporary URL with `useCdn` on).
+- `cdnErrorKey(err)`: a failing token request (`AUTHJSON`) or a `401` → `CDN_AUTH_FAILED`, anything else → `CDN_CREATE_FAILED`.
+- The CDN credentials must belong to the same customer/file server (`serv` claim) as the normal ones — `mediaId` comes from the normal API.
+- Test page: `CDN_CLIENT_ID`, `CDN_CLIENT_SECRET`, `CDN_REFRESH_TOKEN` in `env.js` → `cdnAuth` for the CDN preset.
 
 ## Implementation order
 
@@ -220,7 +248,10 @@ The file selector **only creates** resources (`POST`, idempotent). It never call
 - Slow `users/me` (devtools throttling): open an unsupported file before it answers → the info-panel alert appears once it answers; a click while pending waits and then delivers / shows the error.
 - With CDN on: network log never shows a `downloads/*` request for non-video files.
 - Video (embed, and `downloadFormat: 'original'`), `stream`, `returnValue: 'fileObject'` unchanged with CDN on and off.
-- Auth modes: `refresh_token`, `accesstoken`, `mediaflowlogin`.
+- Auth modes: `refresh_token`, `accesstoken`, `mediaflowlogin` — each combined with `cdnAuth` (refresh token and `accesstoken`).
+- `useCdn: true` without `cdnAuth`, or with an incomplete one → `CDN_INIT_FAILED` at start-up, no `users/me` call, nothing delivered.
+- Wrong CDN client secret / refresh token → `CDN_AUTH_FAILED`; network log shows the token request to `accounts.*` for the CDN client.
+- Network log: `cdn/resources` requests carry the CDN token, all other requests the normal one.
 
 ## Open questions
 

@@ -156,6 +156,7 @@
         <option value="minimum">Minimum (uses FS:s internal default values)</option>
         <option value="minimumPreview">Minimum (with file preview)</option>
         <option value="permanentURLPreview">Permanent URL (with file preview)</option>
+        <option value="cdnPreview">CDN, useCdn: true (with file preview)</option>
       </select>
       <div>
         <label>&nbsp;</label><span style="font-size: .75rem">Select a preset to get predefined settings for the File
@@ -173,7 +174,7 @@
   </div>
 
   <script type="module">
-    import { bareMinimumSettings, bareMinimumSettingsWithPreview, permanentURLSettingsWithPreview } from './bareMinimum.js';
+    import { bareMinimumSettings, bareMinimumSettingsWithPreview, permanentURLSettingsWithPreview, cdnSettingsWithPreview } from './bareMinimum.js';
     
     const loadCredentials = async () => {
       try {
@@ -215,6 +216,13 @@
           break;
         case "permanentURLPreview":
           currentFsSettings = { ...permanentURLSettingsWithPreview }
+          break;
+        case "cdnPreview":
+          currentFsSettings = { ...cdnSettingsWithPreview, cdnAuth: {
+            client_id: credentials?.CDN_CLIENT_ID ?? '',
+            client_secret: credentials?.CDN_CLIENT_SECRET ?? '',
+            refresh_token: credentials?.CDN_REFRESH_TOKEN ?? ''
+          } }
           break;
         default:
           currentFsSettings = { ...bareMinimumSettings }

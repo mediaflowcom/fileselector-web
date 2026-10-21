@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 ### Added
+- `useCdn` setting (default `false`): CDN support is opt-in per integration. Without `useCdn: true`
+  the CDN is never used and `users/me` / `cdn/resources` are not called.
+- `mediaId` in the file object for images (previously only for non-image files).
+- Test page preset "CDN, useCdn: true (with file preview)".
 - CDN support. At start-up `isUsingCDN()` decides whether the Mediaflow CDN is used:
   it is when the customer's `activeModules` (`users/me`) contains `cdn` (`cdnId` 2 for now). When it is, a CDN resource is created
   (`POST /1/cdn/resources`) for the selected file and the file object's `url` is the
@@ -16,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New events `cdnResourceCreated` and `cdnError`.
 - Optional `cdnWaitForReady` setting: wait until the CDN resource is `completed` before
   delivering.
+- `cdnAuth` setting, required with `useCdn: true`: separate credentials for the CDN API
+  (`{ client_id, client_secret, refresh_token [, username] }` or `{ auth: 'accesstoken', accesstoken }`),
+  since the CDN API doesn't accept the normal credentials. Only `cdn/resources` uses them.
+  Missing/incomplete `cdnAuth` → `CDN_INIT_FAILED`; a failing CDN login → new error `CDN_AUTH_FAILED`.
 
 ### Changed
 - With CDN on, `downloads/{format}` is no longer called. A 503 when creating the CDN

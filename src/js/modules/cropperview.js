@@ -1,7 +1,7 @@
 /* Mediaflow File Selector */
 
 import Cropper from 'cropperjs';
-import { getCdnMode, isCdnSupported, isDownloadDenied, showCdnError, buildImageParams, fileTypeFor, publish } from '../services/cdn';
+import { getCdnMode, isCdnSupported, isDownloadDenied, showCdnError, buildImageParams, fileTypeFor, publish, cdnErrorKey } from '../services/cdn';
 
 export default {
   me:{},
@@ -913,6 +913,7 @@ export default {
     const cropH = sel.cropperData?.height ?? 0;
     let successObject = {
       id: me.file.id,
+      mediaId: me.file.mediaId,
       folderId: me.selectedFolderId,
       url: url,
       name: me.file.name,
@@ -963,7 +964,7 @@ export default {
     }, function(err) {
       me.isDownloading = false;
       _this.resetDoneButton(me);
-      showCdnError(me, 'CDN_CREATE_FAILED', err);
+      showCdnError(me, cdnErrorKey(err), err);
     });
   },
 
