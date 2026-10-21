@@ -1,7 +1,7 @@
 /* Mediaflow File Selector */
 
 import Cropper from 'cropperjs';
-import { getCdnMode, isCdnSupported, isDownloadDenied, showCdnError, buildImageParams, fileTypeFor, publish, cdnErrorKey } from '../services/cdn';
+import { getCdnMode, isCdnSupported, isDownloadDenied, showCdnError, buildImageParams, fileTypeFor, publish } from '../services/cdn';
 
 export default {
   me:{},
@@ -964,7 +964,7 @@ export default {
     }, function(err) {
       me.isDownloading = false;
       _this.resetDoneButton(me);
-      showCdnError(me, cdnErrorKey(err), err);
+      showCdnError(me, 'CDN_CREATE_FAILED', err);
     });
   },
 

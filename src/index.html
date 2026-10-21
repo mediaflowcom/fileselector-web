@@ -218,11 +218,7 @@
           currentFsSettings = { ...permanentURLSettingsWithPreview }
           break;
         case "cdnPreview":
-          currentFsSettings = { ...cdnSettingsWithPreview, cdnAuth: {
-            client_id: credentials?.CDN_CLIENT_ID ?? '',
-            client_secret: credentials?.CDN_CLIENT_SECRET ?? '',
-            refresh_token: credentials?.CDN_REFRESH_TOKEN ?? ''
-          } }
+          currentFsSettings = { ...cdnSettingsWithPreview }
           break;
         default:
           currentFsSettings = { ...bareMinimumSettings }

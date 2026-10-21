@@ -117,8 +117,7 @@ export const permanentURLSettingsWithPreview = Object.assign({}, bareMinimumSett
     }
 });
 
-// CDN: opt in with useCdn (the customer must also have the 'cdn' module active).
-// cdnAuth (separate CDN API credentials) is filled in by the test page from env.js.
+// CDN: opt in with useCdn (the customer must also have the 'cdn' module active)
 export const cdnSettingsWithPreview = Object.assign({}, bareMinimumSettingsWithPreview, {
     useCdn: true,
     cdnWaitForReady: true

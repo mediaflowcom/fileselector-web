@@ -5,20 +5,14 @@
  * object's url is replaced by the resource's stable CDN URL, with transform parameters
  * (crop/size/format) appended as query parameters.
  *
- * The CDN API is called with its own credentials (config.cdnAuth) through a separate MFAPI
- * instance (me.cdnApi); everything else uses the file selector's normal credentials (me.api).
- *
  * Video is never routed to the CDN. The file selector only creates resources; the
  * integration owns the rest of the lifecycle (PUT/PATCH/DELETE) via cdn.resourceId.
  */
-
-import MFAPI from './api';
 
 // Used until the keys exist in the fileSelector dictionary
 const FALLBACK_TEXTS = {
   CDN_INIT_FAILED: 'Could not determine the CDN settings. Please reload the page or contact your administrator.',
   CDN_CREATE_FAILED: 'The file could not be published to the CDN. Please try again or contact your administrator.',
-  CDN_AUTH_FAILED: 'Could not log in to the CDN. Please contact your administrator.',
   CDN_FILETYPE_NOT_SUPPORTED: 'This file type cannot be published to the CDN.',
   FILE_INFO_CDN_NOT_SUPPORTED: 'This file type cannot be published to the CDN and can therefore not be used.'
 };
@@ -72,7 +66,7 @@ export function isDownloadDenied(me) {
 
 /**
  * Show a CDN error: alert, console and a 'cdnError' event. Never delivers anything.
- * @param {string} key CDN_INIT_FAILED | CDN_CREATE_FAILED | CDN_AUTH_FAILED | CDN_FILETYPE_NOT_SUPPORTED
+ * @param {string} key CDN_INIT_FAILED | CDN_CREATE_FAILED | CDN_FILETYPE_NOT_SUPPORTED
  */
 export function showCdnError(me, key, detail) {
   console.error('CDN: ' + key, detail ?? '');
@@ -87,55 +81,14 @@ export function showCdnError(me, key, detail) {
   alert(translateCdn(me, key));
 }
 
-/**
- * Why config.cdnAuth can't be used, or null when it's fine.
- * Either { client_id, client_secret, refresh_token [, username] } or { auth: 'accesstoken', accesstoken }.
- */
-export function cdnAuthProblem(config) {
-  const a = config?.cdnAuth;
-  const filled = (v) => typeof v === 'string' && v.length > 0;
-  if (!a || typeof a !== 'object') return 'MISSING_CDNAUTH';
-  if (a.auth === 'accesstoken') return filled(a.accesstoken) ? null : 'MISSING_CDNAUTH_ACCESSTOKEN';
-  if (!filled(a.client_id) || !filled(a.client_secret) || !filled(a.refresh_token)) return 'INCOMPLETE_CDNAUTH';
-  return null;
-}
-
-/**
- * MFAPI instance for the CDN API, using config.cdnAuth. Each MFAPI instance keeps its own
- * token, so the CDN token never mixes with the file selector's normal token.
- * Returns null when config.cdnAuth is invalid (reported by _initCdn via cdnAuthProblem).
- */
-export function createCdnApi(config) {
-  if (cdnAuthProblem(config)) return null;
-  const a = config.cdnAuth;
-  const cdnConfig = a.auth === 'accesstoken'
-    ? { auth: 'accesstoken', accesstoken: a.accesstoken }
-    : { auth: 'token', client_id: a.client_id, client_secret: a.client_secret, refresh_token: a.refresh_token, username: a.username };
-  cdnConfig.oauthBase = config.oauthBase;
-  return MFAPI(config.apiBase, cdnConfig);
-}
-
-/** Error key for a failed CDN call: login problems (token request failed, 401) vs other failures. */
-export function cdnErrorKey(err) {
-  const message = typeof err === 'string' ? err : err?.message;
-  if (err?.status === 401 || (typeof message === 'string' && message.indexOf('AUTHJSON') >= 0)) {
-    return 'CDN_AUTH_FAILED';
-  }
-  return 'CDN_CREATE_FAILED';
-}
-
-/** Wrap MFAPI's callback style in a promise; rejects with { message, status, body }. Uses the CDN credentials. */
+/** Wrap MFAPI's callback style in a promise; rejects with { message, status, body }. */
 function request(me, method, endpoint, body) {
   return new Promise((resolve, reject) => {
-    if (!me.cdnApi) {
-      reject({ message: 'ERR:CDN,NO_CDN_API' });
-      return;
-    }
     const fail = (message, info) => reject({ message: message, status: info?.status, body: info?.body });
     if (method === 'POST') {
-      me.cdnApi.post(endpoint, body, resolve, fail);
+      me.api.post(endpoint, body, resolve, fail);
     } else {
-      me.cdnApi.get(endpoint, resolve, fail);
+      me.api.get(endpoint, resolve, fail);
     }
   });
 }

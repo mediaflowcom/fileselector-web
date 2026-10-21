@@ -20,10 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New events `cdnResourceCreated` and `cdnError`.
 - Optional `cdnWaitForReady` setting: wait until the CDN resource is `completed` before
   delivering.
-- `cdnAuth` setting, required with `useCdn: true`: separate credentials for the CDN API
-  (`{ client_id, client_secret, refresh_token [, username] }` or `{ auth: 'accesstoken', accesstoken }`),
-  since the CDN API doesn't accept the normal credentials. Only `cdn/resources` uses them.
-  Missing/incomplete `cdnAuth` → `CDN_INIT_FAILED`; a failing CDN login → new error `CDN_AUTH_FAILED`.
 
 ### Changed
 - With CDN on, `downloads/{format}` is no longer called. A 503 when creating the CDN

@@ -9,7 +9,7 @@ import fileinfo from './modules/fileinfo';
 import cropperview from './modules/cropperview';
 import movieview from './modules/movieview';
 import toparea from './modules/toparea';
-import { getCdnMode, isCdnSupported, isDownloadDenied, isVideo, showCdnError, publish, cdnErrorKey, createCdnApi, cdnAuthProblem } from './services/cdn';
+import { getCdnMode, isCdnSupported, isDownloadDenied, isVideo, showCdnError, publish } from './services/cdn';
 
 import "../css/cropper.min.css";
 import "../css/fileselector.css";
@@ -75,7 +75,6 @@ export default class FileSelector {
           me.isDownloading = false;
           me.api = MFAPI(config.apiBase, config);
           me.cdn = { pending: true, enabled: false, cdnId: null, error: null };
-          me.cdnApi = config.useCdn === true ? createCdnApi(config) : null; // separate credentials (config.cdnAuth) for the CDN API
           me.cdnReady = me._initCdn();
           me.version = '1.0.0';
           me._setupResponsiveUI();
@@ -132,17 +131,6 @@ export default class FileSelector {
 		if (me.config.useCdn !== true) {
 			me.cdn.enabled = false;
 			me.cdn.pending = false;
-			return;
-		}
-		// The CDN API needs its own credentials (config.cdnAuth). Without them the CDN can't be
-		// used, and since useCdn is set a temporary URL must not be delivered either -> error.
-		const authProblem = cdnAuthProblem(me.config);
-		if (authProblem) {
-			me.cdn.enabled = false;
-			me.cdn.error = { message: 'ERR:CDN,' + authProblem };
-			me.cdn.pending = false;
-			console.error('CDN: invalid config.cdnAuth (' + authProblem + ')');
-			showCdnError(me, 'CDN_INIT_FAILED', me.cdn.error);
 			return;
 		}
 		try {
@@ -567,7 +555,7 @@ export default class FileSelector {
 			me.config.success(fileResult);
 		}, function(err) {
 			me.isDownloading = false;
-			showCdnError(me, cdnErrorKey(err), err);
+			showCdnError(me, 'CDN_CREATE_FAILED', err);
 		});
 		return true;
 	}
