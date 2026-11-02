@@ -55,7 +55,7 @@ export default function MFAPI(baseURI, config)
         body.append("username", username);
       }
 
-      xhr.open('POST', config.oauthBase + '/oauth2/token');
+      xhr.open('POST', config.oauthTokenUrl || (config.oauthBase + '/oauth2/token'));
       xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
       xhr.onerror = function() {
         reject('ERR:POST,AUTHJSON');

@@ -16,6 +16,23 @@ import "../css/fileselector.css";
 
 const CDN_MODULE = 'cdn'; // activeModules value that enables the CDN
 
+/**
+ * API client for integration-level calls such as users/me, which fail with a token issued for a mapped
+ * user (username). Everything else (files, folders, CDN, …) keeps using me.api with the user's token.
+ * - auth 'accesstoken': uses config.integrationAccesstoken when given (a token issued without username),
+ *   otherwise the same token as me.api (unchanged behaviour).
+ * - refresh token auth: fetches its own token for the same key, without username.
+ * - mediaflowlogin: same session as me.api.
+ */
+function createIntegrationApi(config) {
+	const integrationConfig = Object.assign({}, config, { username: undefined });
+	if (config.auth === 'accesstoken'
+		&& typeof(config.integrationAccesstoken) === 'string' && config.integrationAccesstoken.length > 0) {
+		integrationConfig.accesstoken = config.integrationAccesstoken;
+	}
+	return MFAPI(config.apiBase, integrationConfig);
+}
+
 export default class FileSelector {
 	constructor(item, config) {
 		const me = this;
@@ -58,6 +75,11 @@ export default class FileSelector {
 				config.oauthBase = config.apiBase;
 			}
 		}
+
+		// OAuth token endpoint (can be overridden with config.oauthTokenUrl, e.g. a relative dev-proxy path).
+		if(typeof(config.oauthTokenUrl) !== 'string' || config.oauthTokenUrl.length === 0) {
+			config.oauthTokenUrl = config.oauthBase + '/oauth2/token';
+		}
 	  
 		if(typeof(config.locale) !== 'string' || config.locale.length !== 5)
 		  config.locale = 'sv-SE';
@@ -74,6 +96,9 @@ export default class FileSelector {
           me.lang = lang(me.config.locale);
           me.isDownloading = false;
           me.api = MFAPI(config.apiBase, config);
+          // Integration-level calls (users/me) fail with a user-mapped token, so they use their own client:
+          // see createIntegrationApi().
+          me.integrationApi = createIntegrationApi(config);
           me.cdn = { pending: true, enabled: false, cdnId: null, error: null };
           me.cdnReady = me._initCdn();
           me.version = '1.0.0';
@@ -104,7 +129,7 @@ export default class FileSelector {
 	async isUsingCDN() {
 		const me = this;
 		const result = await new Promise(function(resolve, reject) {
-			me.api.get('users/me?fields=all', resolve, function(message, info) {
+			me.integrationApi.get('users/me?fields=activeModules', resolve, function(message, info) {
 				reject({ message: message, status: info?.status, body: info?.body });
 			});
 		});

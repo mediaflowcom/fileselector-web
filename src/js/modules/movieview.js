@@ -275,7 +275,7 @@ export default {
   },
   getThemes: function() {
     try {
-      this.me.api.get('users/me?fields=activeModules&customerId', (data) => {
+      this.me.integrationApi.get('users/me?fields=activeModules&customerId', (data) => {
         if (data && data.length > 0 && data[0].activeModules && data[0].activeModules.includes('video_player_themes')) {
           
     
