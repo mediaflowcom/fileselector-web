@@ -41,6 +41,9 @@ export default {
     // Used when we are not going to crop - but just, for example, reduce the size of an image.
     const disableCropper = me.config?.defaults?.disableCropper ?? false;
     const hideLeftPaneCropperFileData = me.config.hideLeftPaneCropperFileData === true;
+    // Hide "Use entire image", "Own format" and "Crop freely" - only predefined formats can be chosen.
+    // Ignored when there are no predefined formats, so the list is never empty.
+    const hideFreeFormats = me.config.hideFreeFormats === true && me.formats.length > 0;
 
     /* cropperpreviewbox */
     var div1 = document.createElement('div');
@@ -130,12 +133,17 @@ export default {
       me.formatSelector.innerHTML += `<option value="${me.config.defaults.format}" data-id="${me.config.defaults.format}">NONE (org. size)</option>`;
     }
 
-    me.formatSelector.innerHTML += `<option value="-3" data-id="-3">${me.lang.translate('CROPPER_USE_ENTIRE_IMAGE')}</option>`;
-    me.formatSelector.innerHTML += `<option value="-2" data-id="-2">${me.lang.translate('CROPPER_USE_OWN_FORMAT')}</option>`;
-    me.formatSelector.innerHTML += `<option value="-1" data-id="-1">${me.lang.translate('CROPPER_CROP_FREELY')}</option>`;
+    if(!hideFreeFormats) {
+      me.formatSelector.innerHTML += `<option value="-3" data-id="-3">${me.lang.translate('CROPPER_USE_ENTIRE_IMAGE')}</option>`;
+      me.formatSelector.innerHTML += `<option value="-2" data-id="-2">${me.lang.translate('CROPPER_USE_OWN_FORMAT')}</option>`;
+      me.formatSelector.innerHTML += `<option value="-1" data-id="-1">${me.lang.translate('CROPPER_CROP_FREELY')}</option>`;
+    }
 
     if(me.formats.length > 0) {
-      me.formatSelector.innerHTML += `<option value="-4">---${me.lang.translate('CROPPER_PREDEFINED_FORMATS')}---</option>`;
+      // The header is only a separator from the free formats above
+      if(!hideFreeFormats) {
+        me.formatSelector.innerHTML += `<option value="-4">---${me.lang.translate('CROPPER_PREDEFINED_FORMATS')}---</option>`;
+      }
       for(let i = 0; i < me.formats.length; i++) {
         me.formatSelector.innerHTML += `<option value="${i}" data-id="${me.formats[i].id}">${me.formats[i].name}</option>`;
       }
@@ -379,7 +387,7 @@ export default {
     let handleKeepRatioFormat = false; // Used if we have a "keepRatio" format
 
     if(me.formats.length > 0) {
-      me.formatSelector.selectedIndex = 4; // The first crop format in drop-down from MF or if downloadFormat = "original".
+      me.formatSelector.value = '0'; // The first predefined format (from MF, config.downloadFormats or downloadFormat = "original").
       me.selectedFormat = me.formats[0].id;
       // -1 for width and height means "use original size"
       if(me.formats[0].width === -1 && me.formats[0].height === -1) {
@@ -463,7 +471,11 @@ export default {
     function setDefaultFormat(){
       // set default format
       if(me.config?.defaults?.format != undefined) {
-        me.formatSelector.selectedIndex = me.formatSelector.querySelector('option[value="'+me.config.defaults.format+'"]').index;
+        const defaultOption = me.formatSelector.querySelector('option[value="'+me.config.defaults.format+'"]');
+        if(!defaultOption) {
+          return; // e.g. a free format while hideFreeFormats is on - keep the first predefined format
+        }
+        me.formatSelector.selectedIndex = defaultOption.index;
         me.selectedFormat = me.config.defaults.format;
 
         // Call changeFormat for this special case
@@ -611,7 +623,7 @@ export default {
     me.selectedFormat = selOpt.dataset.id;
 
     if(selectedFormatValue === -4) { // rubriken - välj första i listan
-      me.formatSelector.selectedIndex = 4;
+      me.formatSelector.value = '0';
       selectedFormatValue = 0;
     }
     if(selectedFormatValue >= 0) {
