@@ -66,6 +66,8 @@ module.exports = {
         throw new Error('webpack-dev-server is not defined');
       }
       devServer.app.use(cors());
+      // Simulates a plugin/add-on backend that issues access tokens (test page: "Access tokens").
+      require('./devtools/mockIntegrationBackend')(devServer.app);
       return middlewares;
     },
   },

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 ### Added
+- `getAccessToken` and `getIntegrationAccessToken` settings (`auth: 'accesstoken'`): async callbacks
+  that return a token (string or `{ access_token, expires_in, token_type }`) from the integration's backend.
+  The token is renewed before it expires and on a `401`, and the request is retried once. Static
+  `accesstoken` / `integrationAccesstoken` still work as before. See README, "Authentication".
+- Test page: "Access tokens – integration creates tokens" mode, backed by a mock integration backend in
+  the dev server (`devtools/mockIntegrationBackend.js`, `POST /mock-integration/token`). Options for token
+  delivery, integration token on/off, a short token lifetime and a username field (was hard-coded `optiadmin`).
+- `hideFreeFormats` setting (default `false`): hides "Use entire image", "Own format" and
+  "Crop freely" in the cropper so only predefined formats can be chosen. Ignored when there
+  are no predefined formats.
 - `useCdn` setting (default `false`): CDN support is opt-in per integration. Without `useCdn: true`
   the CDN is never used and `users/me` / `cdn/resources` are not called.
 - `mediaId` in the file object for images (previously only for non-image files).

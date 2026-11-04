@@ -68,6 +68,14 @@
         max-width: 100%;
       }
 
+      input[type="checkbox"] {
+        width: auto;
+      }
+
+      &.refreshMode .accesstokenOnly {
+        display: none;
+      }
+
       #refreshToken[value^='No'] {
        color: crimson;
       }
@@ -139,6 +147,44 @@
       </select>
     </div>
     <div>
+      <label>Username:</label>
+      <input type="text" id="username" placeholder="(none)">
+    </div>
+    <div>
+      <label>Authentication:</label>
+      <select id="authMode">
+        <option value="refresh">Refresh token – FS creates tokens (dev only)</option>
+        <option value="accesstoken">Access tokens – integration creates tokens</option>
+      </select>
+    </div>
+    <div class="accesstokenOnly">
+      <label>Token delivery:</label>
+      <select id="tokenDelivery">
+        <option value="callbacks">Callbacks (getAccessToken / getIntegrationAccessToken)</option>
+        <option value="staticAndCallbacks">Static tokens + callbacks</option>
+        <option value="static">Static tokens only (never renewed)</option>
+        <option value="invalidStatic">Invalid static tokens + callbacks (tests 401 → renew)</option>
+      </select>
+    </div>
+    <div class="accesstokenOnly">
+      <label>Integration token:</label>
+      <input type="checkbox" id="useIntegrationToken" checked>
+      <span style="font-size: .75rem">Separate token without username, for users/me</span>
+    </div>
+    <div class="accesstokenOnly">
+      <label>Token lifetime:</label>
+      <select id="tokenLifetime">
+        <option value="0">As issued</option>
+        <option value="60">60 s (renewed every ~30 s)</option>
+        <option value="40">40 s (renewed every ~10 s)</option>
+      </select>
+    </div>
+    <div class="accesstokenOnly">
+      <label>&nbsp;</label><span style="font-size: .75rem">Tokens come from the dev server's mock integration backend
+        (<code>devtools/mockIntegrationBackend.js</code>); the File Selector never gets the client secret or refresh token.
+        See the console for <code>[integration]</code> logs.</span>
+    </div>
+    <div>
       <label>Language:</label>
       <select id="lang">
         <option value="sv-SE">Swedish</option>
@@ -194,7 +240,67 @@
     let refreshToken = (credentials?.REFRESH_TOKEN ?? null) ?? localStorage.getItem('refreshToken');
     let domain = (credentials?.DOMAIN ?? null) ?? localStorage.getItem('domain');
 
-    function showFileSelector() {
+    // ---- Integration simulation (auth: 'accesstoken') ----
+    // Asks the mock integration backend in the dev server for a token, like a plugin's front end
+    // asks its own backend. kind: 'user' (with username) or 'integration' (without username).
+    window.integrationTokenLog = [];
+    async function fetchIntegrationToken(kind) {
+      const username = document.getElementById('username').value.trim();
+      const started = Date.now();
+      const r = await fetch('/mock-integration/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domain: document.getElementById('domain').value,
+          client_id: clientId,
+          client_secret: clientSecret,
+          refresh_token: refreshToken,
+          username: kind === 'user' && username ? username : undefined,
+          lifetime: Number(document.getElementById('tokenLifetime').value) || undefined
+        })
+      });
+      const o = await r.json();
+      const entry = { kind, at: new Date().toISOString(), ms: Date.now() - started, status: r.status, expires_in: o.expires_in, error: o.error };
+      window.integrationTokenLog.push(entry);
+      console.log('[integration] token request', entry);
+      if (!r.ok) {
+        throw new Error('mock integration backend: ' + (o.error || r.status));
+      }
+      return o; // { access_token, expires_in, token_type }
+    }
+
+    async function integrationAuthSettings() {
+      const delivery = document.getElementById('tokenDelivery').value;
+      const useIntegrationToken = document.getElementById('useIntegrationToken').checked;
+      const settings = { auth: 'accesstoken' };
+      const callbacks = delivery !== 'static';
+
+      if (callbacks) {
+        settings.getAccessToken = () => fetchIntegrationToken('user');
+        if (useIntegrationToken) {
+          settings.getIntegrationAccessToken = () => fetchIntegrationToken('integration');
+        }
+      }
+      if (delivery === 'static' || delivery === 'staticAndCallbacks') {
+        // As if the integration rendered the tokens into the page
+        const [user, integration] = await Promise.all([
+          fetchIntegrationToken('user'),
+          useIntegrationToken ? fetchIntegrationToken('integration') : Promise.resolve(null)
+        ]);
+        settings.accesstoken = user.access_token;
+        if (integration) settings.integrationAccesstoken = integration.access_token;
+      }
+      if (delivery === 'invalidStatic') {
+        settings.accesstoken = 'invalid-test-token';
+        if (useIntegrationToken) settings.integrationAccesstoken = 'invalid-test-token';
+      }
+      console.log('[integration] auth settings', { delivery, useIntegrationToken,
+        accesstoken: settings.accesstoken ? 'static' : '-', integrationAccesstoken: settings.integrationAccesstoken ? 'static' : '-',
+        getAccessToken: !!settings.getAccessToken, getIntegrationAccessToken: !!settings.getIntegrationAccessToken });
+      return settings;
+    }
+
+    async function showFileSelector() {
       document.getElementById('fileSelectorDiv').style.display = '';
       document.getElementById('settingsDiv').style.display = 'none';
       document.getElementById('test1').style.display = 'block';
@@ -225,9 +331,25 @@
           break;
       }
 
-      currentFsSettings = { ...currentFsSettings, locale: lang, client_id: clientId, client_secret: clientSecret, refresh_token: refreshToken, apiBase: apiBase, oauthBase: oauthBase, username: 'optiadmin' };
+      currentFsSettings = { ...currentFsSettings, hideFreeFormats: false, locale: lang, apiBase: apiBase, oauthBase: oauthBase };
+
+      if (document.getElementById('authMode').value === 'accesstoken') {
+        // Integration mode: no client secret / refresh token / username in the File Selector config
+        try {
+          currentFsSettings = { ...currentFsSettings, ...(await integrationAuthSettings()) };
+        } catch (e) {
+          console.error('[integration] could not get tokens', e);
+          alert('Could not get tokens from the mock integration backend: ' + e.message);
+          return;
+        }
+      } else {
+        const username = document.getElementById('username').value.trim();
+        currentFsSettings = { ...currentFsSettings, client_id: clientId, client_secret: clientSecret, refresh_token: refreshToken,
+          username: username || undefined };
+      }
 
       myFileSelector = new FileSelector("test1", {...currentFsSettings });
+      window.myFileSelector = myFileSelector;
     }
 
     window.showFileSelector = showFileSelector;
@@ -366,6 +488,27 @@
         }
       }      
     };
+
+    // Integration test settings, remembered between reloads
+    const settingsDiv = document.getElementById('settingsDiv');
+    const persisted = [
+      ['username', 'value', 'optiadmin'],
+      ['authMode', 'value', 'refresh'],
+      ['tokenDelivery', 'value', 'callbacks'],
+      ['tokenLifetime', 'value', '0'],
+      ['useIntegrationToken', 'checked', true]
+    ];
+    const updateAuthModeUi = () => settingsDiv.classList.toggle('refreshMode', document.getElementById('authMode').value !== 'accesstoken');
+    persisted.forEach(([id, prop, fallback]) => {
+      const el = document.getElementById(id);
+      const stored = localStorage.getItem('fs_test_' + id);
+      el[prop] = stored === null ? fallback : (prop === 'checked' ? stored === 'true' : stored);
+      el.onchange = () => {
+        localStorage.setItem('fs_test_' + id, String(el[prop]));
+        updateAuthModeUi();
+      };
+    });
+    updateAuthModeUi();
 
     document.getElementById('themeToggle').onclick = function () {
       const test1 = document.getElementById('test1');

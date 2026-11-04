@@ -19,16 +19,26 @@ const CDN_MODULE = 'cdn'; // activeModules value that enables the CDN
 /**
  * API client for integration-level calls such as users/me, which fail with a token issued for a mapped
  * user (username). Everything else (files, folders, CDN, …) keeps using me.api with the user's token.
- * - auth 'accesstoken': uses config.integrationAccesstoken when given (a token issued without username),
- *   otherwise the same token as me.api (unchanged behaviour).
+ * - auth 'accesstoken':
+ *   - config.getIntegrationAccessToken given: that callback renews the token (config.integrationAccesstoken,
+ *     if given, is used first).
+ *   - only config.integrationAccesstoken given: that static token (a token issued without username), never renewed.
+ *   - neither: the same token / getAccessToken callback as me.api (unchanged behaviour).
  * - refresh token auth: fetches its own token for the same key, without username.
  * - mediaflowlogin: same session as me.api.
  */
 function createIntegrationApi(config) {
 	const integrationConfig = Object.assign({}, config, { username: undefined });
-	if (config.auth === 'accesstoken'
-		&& typeof(config.integrationAccesstoken) === 'string' && config.integrationAccesstoken.length > 0) {
-		integrationConfig.accesstoken = config.integrationAccesstoken;
+	if (config.auth === 'accesstoken') {
+		const hasStaticToken = typeof(config.integrationAccesstoken) === 'string' && config.integrationAccesstoken.length > 0;
+		if (typeof(config.getIntegrationAccessToken) === 'function') {
+			integrationConfig.accesstoken = hasStaticToken ? config.integrationAccesstoken : '';
+			integrationConfig.getAccessToken = config.getIntegrationAccessToken;
+		} else if (hasStaticToken) {
+			integrationConfig.accesstoken = config.integrationAccesstoken;
+			// Never fall back to getAccessToken here: it returns the user-mapped token.
+			integrationConfig.getAccessToken = undefined;
+		}
 	}
 	return MFAPI(config.apiBase, integrationConfig);
 }
@@ -58,9 +68,16 @@ export default class FileSelector {
 			console.error("missing or invalid downloadFormats");
 			return;
 		}
-		if(config.auth === 'accesstoken' && (typeof(config.accesstoken) !== 'string' || config.accesstoken.length<1)) {
-			console.error("missing config.accesstoken");
+		if(config.auth === 'accesstoken'
+			&& (typeof(config.accesstoken) !== 'string' || config.accesstoken.length<1)
+			&& typeof(config.getAccessToken) !== 'function') {
+			console.error("missing config.accesstoken or config.getAccessToken");
 			return;
+		}
+		if(config.auth === 'accesstoken' && config.useCdn === true
+			&& typeof(config.getIntegrationAccessToken) !== 'function'
+			&& (typeof(config.integrationAccesstoken) !== 'string' || config.integrationAccesstoken.length<1)) {
+			console.warn("useCdn: no integrationAccesstoken / getIntegrationAccessToken given; users/me is called with the user token and fails if that token is issued for a username");
 		}
 
 		if(typeof(config.apiBase) !== 'string' || config.apiBase.length<10 || config.apiBase.substring(0,4) !== 'http') {
