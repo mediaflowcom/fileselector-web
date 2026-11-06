@@ -2,6 +2,7 @@
 
 import Cropper from 'cropperjs';
 import { getCdnMode, isCdnSupported, isDownloadDenied, showCdnError, buildImageParams, fileTypeFor, publish } from '../services/cdn';
+import { assetFields, withCdn, isCropped } from '../helpers/fileresult';
 
 export default {
   me:{},
@@ -951,7 +952,9 @@ export default {
       },
       cropWidth: cropW,
       cropHeight: cropH,
-      cropFormat: me.formatSelector.options[me.formatSelector.selectedIndex].dataset.id
+      isCropped: isCropped(cropX, cropY, cropW, cropH, safeCanvasWidth, safeCanvasHeight),
+      cropFormat: me.formatSelector.options[me.formatSelector.selectedIndex].dataset.id,
+      ...assetFields(me.file)
     };
     if(me.config.useNavigationLink === true && me.navigationLink.value.trim().length > 0) {
       successObject.navigationLink = me.navigationLink.value.trim();
@@ -969,8 +972,7 @@ export default {
 
     publish(me, me.file, params).then(function(result) {
       me.isDownloading = false;
-      const successObject = _this.buildSuccessObject(me, sel, result.url, fileTypeFor(me, params));
-      successObject.cdn = result.cdn;
+      const successObject = withCdn(_this.buildSuccessObject(me, sel, result.url, fileTypeFor(me, params)), result.cdn);
       _this.showDoneButtonDone(me);
       me.config.success(successObject);
     }, function(err) {

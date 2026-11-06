@@ -142,12 +142,14 @@ With `useCdn: true` and `isUsingCDN()` (in `fileselector.js`) returning `true` �
 
 - `url` in the file object is the stable CDN URL. For images the crop/size/format selection is appended as query parameters, for example `…/hero.jpg?w=800&h=600&rg=10,10,40,30`.
 - `cdn` holds `{ resourceId, url, versionedUrl, status, params }`. `cdn.url` is the URL without parameters.
+- `resourceId` is also set at the top level of the file object (same as `cdn.resourceId`), as in the Asset Migration Service file object.
 - Video, `downloadFormat: 'stream'` and `returnValue: 'fileObject'` are unaffected.
 - File types the CDN can't publish, and failing CDN API calls, show an error. A 503 when creating the resource is retried once first. With CDN on, a temporary URL is never delivered.
 - Events: `cdnResourceCreated` and `cdnError` (`{ id, mediaId, reason, error }`).
 - `cdnWaitForReady: true` waits (up to 15 s) until the resource is `completed`. Without it, the URL returns `503 Retry-After` for a short while after creation.
 - `filetype` and the extension of `filename`: when an explicit format is requested (`defaults.imageDownloadFileType`, or `webp` forced for GIF) they match it (`jpeg` → `jpg`). Otherwise they are the **source** extension, while the CDN edge negotiates the delivered format per request (AVIF/WebP/…) from the browser's `Accept` header. Use the response `Content-Type`, not `filetype`, if the integration downloads the CDN URL and needs the real format.
 - `mediaId` is now included in the file object for images too (it was only set for non-image files).
+- The file object also has `isMediaflowAsset` (`true`), `type`, `filesize`, `thumbPreview`, `smallPreview`, `mediumPreview` and, for images from the cropper, `isCropped` (`true` when the crop box doesn't cover the whole image). These match the `file` object the Asset Migration Service returns for migrated ImageVault assets. Crop coordinates are in pixels of the original image (`canvasWidth` × `canvasHeight`) in both.
 - Authentication: `POST cdn/resources` is called from the browser with the user token, like the rest of the file selector. The user/token must be allowed to create CDN resources, otherwise selection fails with `CDN_CREATE_FAILED`. `users/me` uses the integration token. See [Authentication](#authentication).
 
 **Lifecycle:** the file selector only creates resources. The integration is responsible for `PUT`/`PATCH`/`DELETE` using `cdn.resourceId`. Selecting the same image again reuses the same resource, so only delete a resource when nothing else uses it.

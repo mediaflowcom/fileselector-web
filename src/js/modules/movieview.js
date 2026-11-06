@@ -1,4 +1,5 @@
 /* Mediaflow File Selector */
+import { assetFields } from '../helpers/fileresult';
 export default {
   me:{},
   init: function(me, backClickCallback, embedMethod, startTime, autoPlay) {
@@ -431,7 +432,8 @@ export default {
         embedCode: sEmebedCode, 
         autoPlay: me.autoPlay,
         startTime: me.useStartOffset === true ? me.startTime : 0, 
-        theme: me.pickedTheme
+        theme: me.pickedTheme,
+        ...assetFields(me.file)
       });
 
       // Show "all done" message to user

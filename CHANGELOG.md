@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
-# Unreleased
+# 2.7.0 Unreleased
 
 ### Added
 - `getAccessToken` and `getIntegrationAccessToken` settings (`auth: 'accesstoken'`): async callbacks
@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `useCdn` setting (default `false`): CDN support is opt-in per integration. Without `useCdn: true`
   the CDN is never used and `users/me` / `cdn/resources` are not called.
 - `mediaId` in the file object for images (previously only for non-image files).
+- File object fields that the Asset Migration Service (AMS) file object also has, so a picked file and a
+  migrated ImageVault asset have the same shape: `isMediaflowAsset` (always `true`), `type`, `filesize`,
+  `thumbPreview`, `smallPreview`, `mediumPreview`, `isCropped` (images; `true` when the crop box does not
+  cover the whole image) and, with CDN delivery, a top-level `resourceId` (same as `cdn.resourceId`).
 - Test page preset "CDN, useCdn: true (with file preview)".
 - CDN support. At start-up `isUsingCDN()` decides whether the Mediaflow CDN is used:
   it is when the customer's `activeModules` (`users/me`) contains `cdn` (`cdnId` 2 for now). When it is, a CDN resource is created
@@ -32,6 +36,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   delivering.
 
 ### Changed
+- `users/me` (AI search switch, video player themes, CDN check) uses a token issued without
+  `username` when the integration passes a `username`. With 2.6.0 that call failed for such
+  integrations, so the AI search switch and video player themes can now appear where they didn't
+  before (hide the switch with `aiSearchDisabled: true`). Without a `username`, or with `mediaflowlogin`,
+  the same token as the rest of the File Selector is used and no extra token is fetched.
+- A request that gets `401` is retried once with a new token, in refresh-token mode or when a
+  token callback is given. Static tokens without a callback behave as before.
 - With CDN on, `downloads/{format}` is no longer called. A 503 when creating the CDN
   resource is retried once. Other failing CDN API calls and file
   types the CDN can't publish (fonts, Office documents, archives) show an error. The info

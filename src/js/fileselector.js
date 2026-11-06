@@ -10,6 +10,7 @@ import cropperview from './modules/cropperview';
 import movieview from './modules/movieview';
 import toparea from './modules/toparea';
 import { getCdnMode, isCdnSupported, isDownloadDenied, isVideo, showCdnError, publish } from './services/cdn';
+import { assetFields, withCdn } from './helpers/fileresult';
 
 import "../css/cropper.min.css";
 import "../css/fileselector.css";
@@ -547,7 +548,8 @@ export default class FileSelector {
 								customFields: me.file.customFields,
 								description: me.file.description,
 								instructions: me.file.instructions,
-								keywords: me.file.keywords
+								keywords: me.file.keywords,
+								...assetFields(me.file)
 							});}, 5);
 						  return true;
 						}
@@ -566,25 +568,26 @@ export default class FileSelector {
 	 */
 	_buildFileResult(url) {
 		const me = this;
+		// Same property order as the cropper's file object (and the Asset Migration Service's)
 		return {
+			id: me.file.id,
+			mediaId: me.file.mediaId,
+			folderId: me.selectedFolderId,
 			url: url,
 			name: me.file.name,
 			filename: me.file.filename,
-			mediaId: me.file.mediaId,
-			id: me.file.id,
-			folderId: me.selectedFolderId,
 			basetype: me.file.type.type,
 			filetype: me.file.type.extension,
 			width: me.file.width,
 			height: me.file.height,
-			photographer: me.file.photographer,
-			altText: me.config.autosetAltText !== false ? me.file.alttext : "",
-			// Extra metadata:
 			additionalInfo: me.file.additionalInfo,
 			customFields: me.file.customFields,
 			description: me.file.description,
+			photographer: me.file.photographer,
 			instructions: me.file.instructions,
-			keywords: me.file.keywords
+			keywords: me.file.keywords,
+			altText: me.config.autosetAltText !== false ? me.file.alttext : "",
+			...assetFields(me.file)
 		};
 	}
 
@@ -606,8 +609,7 @@ export default class FileSelector {
 		me.isDownloading = true;
 		publish(me, me.file, {}).then(function(result) {
 			me.isDownloading = false;
-			const fileResult = me._buildFileResult(result.url);
-			fileResult.cdn = result.cdn;
+			const fileResult = withCdn(me._buildFileResult(result.url), result.cdn);
 			me.config.success(fileResult);
 		}, function(err) {
 			me.isDownloading = false;
