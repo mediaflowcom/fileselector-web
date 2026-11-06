@@ -129,10 +129,10 @@ export default class FileSelector {
           me.api = MFAPI(config.apiBase, config);
           // Integration-level calls (users/me) fail with a user-mapped token, so they use their own client:
           // see createIntegrationApi().
-          me.integrationApi = createIntegrationApi(config);
+          me.integrationApi = createIntegrationApi(config, me.api);
           me.cdn = { pending: true, enabled: false, cdnId: null, error: null };
           me.cdnReady = me._initCdn();
-          me.version = '1.0.0';
+          me.version = FS_VERSION;
           me._setupResponsiveUI();
           me._buildUI();		
           me._init();
