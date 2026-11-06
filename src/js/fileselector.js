@@ -18,29 +18,43 @@ const CDN_MODULE = 'cdn'; // activeModules value that enables the CDN
 
 /**
  * API client for integration-level calls such as users/me, which fail with a token issued for a mapped
- * user (username). Everything else (files, folders, CDN, …) keeps using me.api with the user's token.
+ * user (username). Everything else (files, folders, CDN, …) keeps using the main client (me.api).
+ * A separate client (with its own token) is only created when the integration token differs from the
+ * user token; otherwise the main client is reused, so no extra token is fetched.
  * - auth 'accesstoken':
  *   - config.getIntegrationAccessToken given: that callback renews the token (config.integrationAccesstoken,
  *     if given, is used first).
  *   - only config.integrationAccesstoken given: that static token (a token issued without username), never renewed.
- *   - neither: the same token / getAccessToken callback as me.api (unchanged behaviour).
- * - refresh token auth: fetches its own token for the same key, without username.
- * - mediaflowlogin: same session as me.api.
+ *   - neither: the main client (same token / getAccessToken callback).
+ * - refresh token auth: with a username, a client that fetches its own token for the same key without
+ *   username; without a username, the main client.
+ * - mediaflowlogin: the main client (same session).
  */
-function createIntegrationApi(config) {
-	const integrationConfig = Object.assign({}, config, { username: undefined });
+function createIntegrationApi(config, mainApi) {
+	if (config.auth === 'mediaflowlogin') {
+		return mainApi;
+	}
 	if (config.auth === 'accesstoken') {
 		const hasStaticToken = typeof(config.integrationAccesstoken) === 'string' && config.integrationAccesstoken.length > 0;
 		if (typeof(config.getIntegrationAccessToken) === 'function') {
-			integrationConfig.accesstoken = hasStaticToken ? config.integrationAccesstoken : '';
-			integrationConfig.getAccessToken = config.getIntegrationAccessToken;
-		} else if (hasStaticToken) {
-			integrationConfig.accesstoken = config.integrationAccesstoken;
-			// Never fall back to getAccessToken here: it returns the user-mapped token.
-			integrationConfig.getAccessToken = undefined;
+			return MFAPI(config.apiBase, Object.assign({}, config, {
+				accesstoken: hasStaticToken ? config.integrationAccesstoken : '',
+				getAccessToken: config.getIntegrationAccessToken
+			}));
 		}
+		if (hasStaticToken) {
+			// Never fall back to getAccessToken here: it returns the user-mapped token.
+			return MFAPI(config.apiBase, Object.assign({}, config, {
+				accesstoken: config.integrationAccesstoken,
+				getAccessToken: undefined
+			}));
+		}
+		return mainApi;
 	}
-	return MFAPI(config.apiBase, integrationConfig);
+	if (typeof(config.username) === 'string' && config.username.length > 0) {
+		return MFAPI(config.apiBase, Object.assign({}, config, { username: undefined }));
+	}
+	return mainApi;
 }
 
 export default class FileSelector {
