@@ -196,6 +196,9 @@ export default {
     // #endregion
 
     trn = document.createElement('tr');
+    if(me.config?.setFilename === false){
+      trn.style.display='none';
+    }
     tdn = document.createElement('td');
     tdn.innerText =  me.lang.translate('CROPPER_FILE_NAME');
     tdn.className = 'mf-hdr';
