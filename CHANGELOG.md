@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `setFilename` setting (default `true`): `false` hides the filename field in the cropper.
-  The file's own name is still used for the downloaded file and the file object's `filename`.
+  The success callback's `filename` still uses the file's own name.
 
 # 2.6.0 2026-08-19
 
