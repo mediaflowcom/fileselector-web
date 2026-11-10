@@ -712,7 +712,8 @@ export default {
     }
 
     // CDN: decide before touching the UI. With CDN on, a temporary URL is never delivered.
-    const cdnMode = getCdnMode(me);
+    // downloadFormat 'stream' is never routed to the CDN (no resource, no file type check).
+    const cdnMode = me.config.downloadFormat === 'stream' ? 'off' : getCdnMode(me);
     if (cdnMode === 'pending') {
       me.cdnReady.then(function() { _this.clickDone(me); });
       return true;
