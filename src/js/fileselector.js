@@ -9,9 +9,54 @@ import fileinfo from './modules/fileinfo';
 import cropperview from './modules/cropperview';
 import movieview from './modules/movieview';
 import toparea from './modules/toparea';
+import { getCdnMode, isCdnSupported, isDownloadDenied, isVideo, showCdnError, publish } from './services/cdn';
+import { assetFields, withCdn } from './helpers/fileresult';
 
 import "../css/cropper.min.css";
 import "../css/fileselector.css";
+
+const CDN_MODULE = 'cdn'; // activeModules value that enables the CDN
+
+/**
+ * API client for integration-level calls such as users/me, which fail with a token issued for a mapped
+ * user (username). Everything else (files, folders, CDN, …) keeps using the main client (me.api).
+ * A separate client (with its own token) is only created when the integration token differs from the
+ * user token; otherwise the main client is reused, so no extra token is fetched.
+ * - auth 'accesstoken':
+ *   - config.getIntegrationAccessToken given: that callback renews the token (config.integrationAccesstoken,
+ *     if given, is used first).
+ *   - only config.integrationAccesstoken given: that static token (a token issued without username), never renewed.
+ *   - neither: the main client (same token / getAccessToken callback).
+ * - refresh token auth: with a username, a client that fetches its own token for the same key without
+ *   username; without a username, the main client.
+ * - mediaflowlogin: the main client (same session).
+ */
+function createIntegrationApi(config, mainApi) {
+	if (config.auth === 'mediaflowlogin') {
+		return mainApi;
+	}
+	if (config.auth === 'accesstoken') {
+		const hasStaticToken = typeof(config.integrationAccesstoken) === 'string' && config.integrationAccesstoken.length > 0;
+		if (typeof(config.getIntegrationAccessToken) === 'function') {
+			return MFAPI(config.apiBase, Object.assign({}, config, {
+				accesstoken: hasStaticToken ? config.integrationAccesstoken : '',
+				getAccessToken: config.getIntegrationAccessToken
+			}));
+		}
+		if (hasStaticToken) {
+			// Never fall back to getAccessToken here: it returns the user-mapped token.
+			return MFAPI(config.apiBase, Object.assign({}, config, {
+				accesstoken: config.integrationAccesstoken,
+				getAccessToken: undefined
+			}));
+		}
+		return mainApi;
+	}
+	if (typeof(config.username) === 'string' && config.username.length > 0) {
+		return MFAPI(config.apiBase, Object.assign({}, config, { username: undefined }));
+	}
+	return mainApi;
+}
 
 export default class FileSelector {
 	constructor(item, config) {
@@ -38,9 +83,16 @@ export default class FileSelector {
 			console.error("missing or invalid downloadFormats");
 			return;
 		}
-		if(config.auth === 'accesstoken' && (typeof(config.accesstoken) !== 'string' || config.accesstoken.length<1)) {
-			console.error("missing config.accesstoken");
+		if(config.auth === 'accesstoken'
+			&& (typeof(config.accesstoken) !== 'string' || config.accesstoken.length<1)
+			&& typeof(config.getAccessToken) !== 'function') {
+			console.error("missing config.accesstoken or config.getAccessToken");
 			return;
+		}
+		if(config.auth === 'accesstoken' && config.useCdn === true
+			&& typeof(config.getIntegrationAccessToken) !== 'function'
+			&& (typeof(config.integrationAccesstoken) !== 'string' || config.integrationAccesstoken.length<1)) {
+			console.warn("useCdn: no integrationAccesstoken / getIntegrationAccessToken given; users/me is called with the user token and fails if that token is issued for a username");
 		}
 
 		if(typeof(config.apiBase) !== 'string' || config.apiBase.length<10 || config.apiBase.substring(0,4) !== 'http') {
@@ -54,6 +106,11 @@ export default class FileSelector {
 			} else {
 				config.oauthBase = config.apiBase;
 			}
+		}
+
+		// OAuth token endpoint (can be overridden with config.oauthTokenUrl, e.g. a relative dev-proxy path).
+		if(typeof(config.oauthTokenUrl) !== 'string' || config.oauthTokenUrl.length === 0) {
+			config.oauthTokenUrl = config.oauthBase + '/oauth2/token';
 		}
 	  
 		if(typeof(config.locale) !== 'string' || config.locale.length !== 5)
@@ -71,7 +128,12 @@ export default class FileSelector {
           me.lang = lang(me.config.locale);
           me.isDownloading = false;
           me.api = MFAPI(config.apiBase, config);
-          me.version = '1.0.0';
+          // Integration-level calls (users/me) fail with a user-mapped token, so they use their own client:
+          // see createIntegrationApi().
+          me.integrationApi = createIntegrationApi(config, me.api);
+          me.cdn = { pending: true, enabled: false, cdnId: null, error: null };
+          me.cdnReady = me._initCdn();
+          me.version = FS_VERSION;
           me._setupResponsiveUI();
           me._buildUI();		
           me._init();
@@ -88,6 +150,54 @@ export default class FileSelector {
 			link.href = `https://mfstatic.com/css/fileselector.min.css?v=${FS_VERSION}`;
 			document.getElementsByTagName('head')[0].appendChild(link);
 		}
+	}
+
+	/**
+	 * Decides whether the CDN shall be used and retrieves the cdnId (this.cdn.cdnId).
+	 * CDN is used when the customer has the 'cdn' module active.
+	 * A failing call or an unexpected response throws (-> CDN_INIT_FAILED in _initCdn).
+	 * @returns {Promise<boolean>}
+	 */
+	async isUsingCDN() {
+		const me = this;
+		const result = await new Promise(function(resolve, reject) {
+			me.integrationApi.get('users/me?fields=activeModules', resolve, function(message, info) {
+				reject({ message: message, status: info?.status, body: info?.body });
+			});
+		});
+
+		if (!Array.isArray(result) || !result[0] || !Array.isArray(result[0].activeModules)) {
+			throw { message: 'ERR:GET,users/me,INVALID_RESPONSE', body: result };
+		}
+		me.cdn.cdnId = 2; // TODO: fetch the cdnId from the Mediaflow API when the source is known
+		return result[0].activeModules.includes(CDN_MODULE);
+	}
+
+	/**
+	 * @private
+	 * Runs isUsingCDN() once at start-up. A failure is shown right away; since the customer's
+	 * CDN choice is then unknown, every later selection shows the error again instead of delivering.
+	 *
+	 * CDN is opt-in per integration: unless config.useCdn === true, the CDN is off and neither
+	 * users/me nor cdn/resources is called (behaviour identical to 2.6.0). The file selector is
+	 * loaded live by every installed integration, so integrations that don't handle CDN URLs
+	 * must never receive them.
+	 */
+	async _initCdn() {
+		const me = this;
+		if (me.config.useCdn !== true) {
+			me.cdn.enabled = false;
+			me.cdn.pending = false;
+			return;
+		}
+		try {
+			me.cdn.enabled = (await me.isUsingCDN()) === true;
+		} catch (e) {
+			me.cdn.enabled = false;
+			me.cdn.error = e || 'ERR:CDN,INIT';
+			showCdnError(me, 'CDN_INIT_FAILED', e);
+		}
+		me.cdn.pending = false;
 	}
 
 	folderClick(me, idx) {
@@ -370,6 +480,21 @@ export default class FileSelector {
 			if((me.file.type.type != 'image' && me.file.type.type != 'video') || me.config.downloadFormat === 'original') {
 				if(me.isDownloading)
 					return false;
+				// Video is never routed to the CDN
+				if (!isVideo(me.file)) {
+					const cdnMode = getCdnMode(me);
+					if (cdnMode === 'pending') {
+						me.cdnReady.then(function() { me.clickDone(); });
+						return true;
+					}
+					if (cdnMode === 'error') {
+						showCdnError(me, 'CDN_INIT_FAILED', me.cdn.error);
+						return false;
+					}
+					if (cdnMode === 'on') {
+						return me._deliverViaCdn();
+					}
+				}
 			  	me.isDownloading = true;
 				me.api.get('file/' + me.file.id + '/downloads/0', function(o) {
 					me.isDownloading = false;
@@ -383,26 +508,7 @@ export default class FileSelector {
 								if(xhr.status === 200 || xhr.status === 201) {
 									try {
 										var o = JSON.parse(xhr.responseText);
-										me.config.success({
-											url: o.url, 
-											name:me.file.name, 
-											filename:me.file.filename, 
-											mediaId: me.file.mediaId, 
-											id:  me.file.id, 
-											folderId: me.selectedFolderId,
-											basetype: me.file.type.type, 
-											filetype: me.file.type.extension, 
-											width: me.file.width, 
-											height: me.file.height, 
-											photographer: me.file.photographer,
-											altText: me.config.autosetAltText !== false ? me.file.alttext : "",
-											// Extra metadata:
-											additionalInfo: me.file.additionalInfo,
-											customFields: me.file.customFields,
-											description: me.file.description,
-											instructions: me.file.instructions,
-											keywords: me.file.keywords
-										});
+										me.config.success(me._buildFileResult(o.url));
 									} catch(e) {
 										alert(me.lang.translate('DOWNLOAD_FAILED'));
 									}
@@ -412,26 +518,7 @@ export default class FileSelector {
 						xhr.send();
 					} else {
 						setTimeout(function() { 
-							me.config.success({
-								url: downloadURL, 
-								name:me.file.name, 
-								filename:me.file.filename,
-								mediaId: me.file.mediaId, 
-								id: me.file.id, 
-								folderId: me.selectedFolderId,
-								basetype:me.file.type.type, 
-								filetype:me.file.type.extension, 
-								width:me.file.width, 
-								height:me.file.height, 
-								photographer:me.file.photographer,
-								altText: me.config.autosetAltText !== false ? me.file.alttext : "",
-								// Extra metadata:
-								additionalInfo: me.file.additionalInfo,
-								customFields: me.file.customFields,
-								description: me.file.description,
-								instructions: me.file.instructions,
-								keywords: me.file.keywords
-							});
+							me.config.success(me._buildFileResult(downloadURL));
 						}, 5);
 					}
 				}, function(o) {
@@ -461,7 +548,8 @@ export default class FileSelector {
 								customFields: me.file.customFields,
 								description: me.file.description,
 								instructions: me.file.instructions,
-								keywords: me.file.keywords
+								keywords: me.file.keywords,
+								...assetFields(me.file)
 							});}, 5);
 						  return true;
 						}
@@ -473,6 +561,62 @@ export default class FileSelector {
 		return false;
 	}
 
+
+	/**
+	 * @private
+	 * File object for non-image files / downloadFormat 'original'.
+	 */
+	_buildFileResult(url) {
+		const me = this;
+		// Same property order as the cropper's file object (and the Asset Migration Service's)
+		return {
+			id: me.file.id,
+			mediaId: me.file.mediaId,
+			folderId: me.selectedFolderId,
+			url: url,
+			name: me.file.name,
+			filename: me.file.filename,
+			basetype: me.file.type.type,
+			filetype: me.file.type.extension,
+			width: me.file.width,
+			height: me.file.height,
+			additionalInfo: me.file.additionalInfo,
+			customFields: me.file.customFields,
+			description: me.file.description,
+			photographer: me.file.photographer,
+			instructions: me.file.instructions,
+			keywords: me.file.keywords,
+			altText: me.config.autosetAltText !== false ? me.file.alttext : "",
+			...assetFields(me.file)
+		};
+	}
+
+	/**
+	 * @private
+	 * CDN delivery for non-image files / downloadFormat 'original' (no transform parameters).
+	 * Replaces downloads/0 and the permanentURL request - a temporary URL is never delivered.
+	 */
+	_deliverViaCdn() {
+		const me = this;
+		if (!isCdnSupported(me.file)) {
+			showCdnError(me, 'CDN_FILETYPE_NOT_SUPPORTED', { typeId: me.file.type?.id, extension: me.file.type?.extension });
+			return false;
+		}
+		if (isDownloadDenied(me)) {
+			alert(me.lang.translate('CROPPER_PERMISSION_DENIED'));
+			return false;
+		}
+		me.isDownloading = true;
+		publish(me, me.file, {}).then(function(result) {
+			me.isDownloading = false;
+			const fileResult = withCdn(me._buildFileResult(result.url), result.cdn);
+			me.config.success(fileResult);
+		}, function(err) {
+			me.isDownloading = false;
+			showCdnError(me, 'CDN_CREATE_FAILED', err);
+		});
+		return true;
+	}
 
 	/**
 	 * Checks whether a given file has a valid type based on its category, extension, or ID.
