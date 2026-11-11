@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # 2.7.0 Unreleased
 
 ### Added
+- `setFilename` setting (default `true`): `false` hides the filename field in the cropper.
+  The success callback's `filename` still uses the file's own name.
 - `getAccessToken` and `getIntegrationAccessToken` settings (`auth: 'accesstoken'`): async callbacks
   that return a token (string or `{ access_token, expires_in, token_type }`) from the integration's backend.
   The token is renewed before it expires and on a `401`, and the request is retried once. Static
