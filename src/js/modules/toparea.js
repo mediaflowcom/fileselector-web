@@ -57,7 +57,7 @@ function renderAiSwitch(me, div) {
     return;
   }
 
-  me.api.get('/users/me?fields=activeModules',
+  me.integrationApi.get('/users/me?fields=activeModules',
     function (result) {
       if (!result || !result[0]) {
         console.error('Error: Invalid response from /users/me');

@@ -2,6 +2,7 @@
 
 import {getTranslation as translate} from "./../services/translations";
 import { hasAiLabel, getAiLabelHeading, getAiLabelTitle } from "./../helpers/ailabel";
+import { getCdnMode, isCdnSupported, isVideo, translateCdn } from "./../services/cdn";
 
 export default {
   me:{},
@@ -235,6 +236,13 @@ export default {
         fileInfoData += `<div class="mf-warning">${warningIcon}${me.lang.translate('LICENSE_WILL_EXPIRE')}</div>`;
       }
     }
+    // CDN - file types the CDN cannot publish (see isBlockedByCdn)
+    // If the CDN decision (users/me) is still pending, the check is applied when it arrives (end of this function).
+    const cdnPending = getCdnMode(me) === 'pending';
+    if (_this.isBlockedByCdn(me)) {
+      fileInfoData += _this.cdnAlertHtml(me, alertIcon, _this);
+      canDownload = false;
+    }
     //#endregion
 
     fileInfoData += `<label>${translate("fileInfo", "fileName")}</label><div>${_this.escapeHtml(me.file.filename)}</div>`;
@@ -394,16 +402,32 @@ export default {
     me.fileinfoArea.appendChild(fileInfoWrapper);
 
     if(!canDownload) {
-      //set disabled attribute
-      if (me.config.rootElement) {
-        if(me.config.rootElement.querySelector('#mf-use-btn')){
-          me.config.rootElement.querySelector('#mf-use-btn').setAttribute('disabled', 'disabled');
+      _this.disableUseButton(me);
+    }
+
+    if (cdnPending) {
+      const shownFile = me.file;
+      me.cdnReady.then(function() {
+        // Only if the same file is still shown
+        if (me.file === shownFile && _this.isBlockedByCdn(me)) {
+          fileInfo.insertAdjacentHTML("afterbegin", _this.cdnAlertHtml(me, alertIcon, _this));
+          _this.disableUseButton(me);
         }
-      } else {
-        if(document.getElementById('mf-use-btn')){
-          document.getElementById('mf-use-btn').setAttribute('disabled', 'disabled');
-        }
-      }
+      });
+    }
+  },
+  // CDN on: file types the CDN cannot publish can't be used (a temporary URL is never delivered).
+  // Not affected by ignorePermissionChecks. Video is never routed to the CDN; 'fileObject' returns the raw file.
+  isBlockedByCdn: function(me) {
+    return getCdnMode(me) === 'on' && me.config.returnValue !== 'fileObject' && !isVideo(me.file) && !isCdnSupported(me.file);
+  },
+  cdnAlertHtml: function(me, alertIcon, _this) {
+    return `<div class="mf-alert">${alertIcon}${_this.escapeHtml(translateCdn(me, 'FILE_INFO_CDN_NOT_SUPPORTED'))}</div>`;
+  },
+  disableUseButton: function(me) {
+    const btn = me.config.rootElement ? me.config.rootElement.querySelector('#mf-use-btn') : document.getElementById('mf-use-btn');
+    if (btn) {
+      btn.setAttribute('disabled', 'disabled');
     }
   },
   btnClick(me, e, _elem, _this) {

@@ -1,6 +1,8 @@
 /* Mediaflow File Selector */
 
 import Cropper from 'cropperjs';
+import { getCdnMode, isCdnSupported, isDownloadDenied, showCdnError, buildImageParams, fileTypeFor, publish } from '../services/cdn';
+import { assetFields, withCdn, isCropped } from '../helpers/fileresult';
 
 export default {
   me:{},
@@ -40,6 +42,9 @@ export default {
     // Used when we are not going to crop - but just, for example, reduce the size of an image.
     const disableCropper = me.config?.defaults?.disableCropper ?? false;
     const hideLeftPaneCropperFileData = me.config.hideLeftPaneCropperFileData === true;
+    // Hide "Use entire image", "Own format" and "Crop freely" - only predefined formats can be chosen.
+    // Ignored when there are no predefined formats, so the list is never empty.
+    const hideFreeFormats = me.config.hideFreeFormats === true && me.formats.length > 0;
 
     /* cropperpreviewbox */
     var div1 = document.createElement('div');
@@ -129,12 +134,17 @@ export default {
       me.formatSelector.innerHTML += `<option value="${me.config.defaults.format}" data-id="${me.config.defaults.format}">NONE (org. size)</option>`;
     }
 
-    me.formatSelector.innerHTML += `<option value="-3" data-id="-3">${me.lang.translate('CROPPER_USE_ENTIRE_IMAGE')}</option>`;
-    me.formatSelector.innerHTML += `<option value="-2" data-id="-2">${me.lang.translate('CROPPER_USE_OWN_FORMAT')}</option>`;
-    me.formatSelector.innerHTML += `<option value="-1" data-id="-1">${me.lang.translate('CROPPER_CROP_FREELY')}</option>`;
+    if(!hideFreeFormats) {
+      me.formatSelector.innerHTML += `<option value="-3" data-id="-3">${me.lang.translate('CROPPER_USE_ENTIRE_IMAGE')}</option>`;
+      me.formatSelector.innerHTML += `<option value="-2" data-id="-2">${me.lang.translate('CROPPER_USE_OWN_FORMAT')}</option>`;
+      me.formatSelector.innerHTML += `<option value="-1" data-id="-1">${me.lang.translate('CROPPER_CROP_FREELY')}</option>`;
+    }
 
     if(me.formats.length > 0) {
-      me.formatSelector.innerHTML += `<option value="-4">---${me.lang.translate('CROPPER_PREDEFINED_FORMATS')}---</option>`;
+      // The header is only a separator from the free formats above
+      if(!hideFreeFormats) {
+        me.formatSelector.innerHTML += `<option value="-4">---${me.lang.translate('CROPPER_PREDEFINED_FORMATS')}---</option>`;
+      }
       for(let i = 0; i < me.formats.length; i++) {
         me.formatSelector.innerHTML += `<option value="${i}" data-id="${me.formats[i].id}">${me.formats[i].name}</option>`;
       }
@@ -381,7 +391,7 @@ export default {
     let handleKeepRatioFormat = false; // Used if we have a "keepRatio" format
 
     if(me.formats.length > 0) {
-      me.formatSelector.selectedIndex = 4; // The first crop format in drop-down from MF or if downloadFormat = "original".
+      me.formatSelector.value = '0'; // The first predefined format (from MF, config.downloadFormats or downloadFormat = "original").
       me.selectedFormat = me.formats[0].id;
       // -1 for width and height means "use original size"
       if(me.formats[0].width === -1 && me.formats[0].height === -1) {
@@ -465,7 +475,11 @@ export default {
     function setDefaultFormat(){
       // set default format
       if(me.config?.defaults?.format != undefined) {
-        me.formatSelector.selectedIndex = me.formatSelector.querySelector('option[value="'+me.config.defaults.format+'"]').index;
+        const defaultOption = me.formatSelector.querySelector('option[value="'+me.config.defaults.format+'"]');
+        if(!defaultOption) {
+          return; // e.g. a free format while hideFreeFormats is on - keep the first predefined format
+        }
+        me.formatSelector.selectedIndex = defaultOption.index;
         me.selectedFormat = me.config.defaults.format;
 
         // Call changeFormat for this special case
@@ -613,7 +627,7 @@ export default {
     me.selectedFormat = selOpt.dataset.id;
 
     if(selectedFormatValue === -4) { // rubriken - välj första i listan
-      me.formatSelector.selectedIndex = 4;
+      me.formatSelector.value = '0';
       selectedFormatValue = 0;
     }
     if(selectedFormatValue >= 0) {
@@ -700,25 +714,37 @@ export default {
       return false;
     }
 
-    if(me.config.showDoneButton !== false) {
-      let btn;
-      if (me.config.rootElement) {
-        // If rootElement is set, use it to find the button. This is necessary when using the file selector in a web component.
-        btn = me.config.rootElement.querySelector('#mf-btn-done');
-      } else {
-        btn = document.getElementById('mf-btn-done');
+    // CDN: decide before touching the UI. With CDN on, a temporary URL is never delivered.
+    // downloadFormat 'stream' is never routed to the CDN (no resource, no file type check).
+    const cdnMode = me.config.downloadFormat === 'stream' ? 'off' : getCdnMode(me);
+    if (cdnMode === 'pending') {
+      me.cdnReady.then(function() { _this.clickDone(me); });
+      return true;
+    }
+    if (cdnMode === 'error') {
+      showCdnError(me, 'CDN_INIT_FAILED', me.cdn.error);
+      return false;
+    }
+    if (cdnMode === 'on') {
+      if (!isCdnSupported(me.file)) {
+        showCdnError(me, 'CDN_FILETYPE_NOT_SUPPORTED', { typeId: me.file.type?.id, extension: me.file.type?.extension });
+        return false;
       }
-      btn.disabled = true;
-      
-      if(me.config.showDoneButtonWorkingFlow){
-        btn.classList.add('working');
-        btn.innerText = me.lang.translate('FILE_VIEW_FETCHING_DATA');
-      }
-      else{
-        btn.classList.add('mf-btn-loading');
+      // Replaces the 403 check previously done by downloads/{format}
+      if (isDownloadDenied(me)) {
+        alert(me.lang.translate('CROPPER_PERMISSION_DENIED'));
+        return false;
       }
     }
+
+    _this.setDoneButtonWorking(me);
     me.isDownloading = true;
+
+    if (cdnMode === 'on') {
+      _this.doCdnDownload(me);
+      return true;
+    }
+
     var format = -1;
     if (me.selectedFormat > 0) {
       format = me.selectedFormat;
@@ -738,12 +764,63 @@ export default {
     return true;
   },
 
-  doDownload: function (me, o) {
-    let downloadURL = o[0].downloadURL;
-    let ww, hh;
+  getDoneButton: function(me) {
+    if(me.config.showDoneButton === false) {
+      return null;
+    }
+    // If rootElement is set, use it to find the button. This is necessary when using the file selector in a web component.
+    return me.config.rootElement ? me.config.rootElement.querySelector('#mf-btn-done') : document.getElementById('mf-btn-done');
+  },
 
-    const altText = me.altInput.value;
-    const fileName = me.filenameInput.value;
+  setDoneButtonWorking: function(me) {
+    const btn = this.getDoneButton(me);
+    if(!btn) {
+      return;
+    }
+    btn.disabled = true;
+    if(me.config.showDoneButtonWorkingFlow){
+      btn.classList.add('working');
+      btn.innerText = me.lang.translate('FILE_VIEW_FETCHING_DATA');
+    }
+    else{
+      btn.classList.add('mf-btn-loading');
+    }
+  },
+
+  // Make the done button usable again (after a CDN error) so the user can retry
+  resetDoneButton: function(me) {
+    const btn = this.getDoneButton(me);
+    if(!btn) {
+      return;
+    }
+    btn.disabled = false;
+    btn.classList.remove('working', 'mf-btn-loading');
+    btn.innerText = me.lang.translate('USE_THIS_FILE');
+  },
+
+  // Show "all done" message to user
+  showDoneButtonDone: function(me) {
+    if(!me.config.showDoneButtonWorkingFlow){
+      return;
+    }
+    const btn = this.getDoneButton(me);
+    if(!btn) {
+      return;
+    }
+    btn.classList.add('working-done');
+    btn.classList.remove('working');
+    btn.innerHTML = `<div><svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" class="bi bi-check-circle-fill" viewBox="0 0 16 16">
+                    <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+                    </svg></div><div>${me.lang.translate('FILE_VIEW_FETCHING_DATA_DONE')}</div>`;
+  },
+
+  /**
+   * Current crop/size selection, used by both the legacy download and the CDN flow.
+   * legacyUrlParams are the parameters appended to the downloads/{format} URL.
+   */
+  getSelection: function(me) {
+    let ww, hh, canvasData, cropperData;
+    let urlParams = '';
 
     const selectedFormatValue = parseInt(me.formatSelector[me.formatSelector.selectedIndex].value, 10);
     const widthInput = me.widthInput.value;
@@ -767,11 +844,11 @@ export default {
         ww = widthInput;
         hh = heightInput;
       }
-      var canvasData = me.cropper.getCanvasData();
-      var cropperData = me.cropper.getData();
+      canvasData = me.cropper.getCanvasData();
+      cropperData = me.cropper.getData();
 
       // cropper values inluded in url
-      downloadURL += '&x1=' + Math.round(cropperData.x) + '&y1=' + Math.round(cropperData.y) +
+      urlParams += '&x1=' + Math.round(cropperData.x) + '&y1=' + Math.round(cropperData.y) +
         '&x2=' + Math.round(cropperData.x + cropperData.width) + '&y2=' + Math.round(cropperData.y + cropperData.height) +
         '&sw=' + canvasData.naturalWidth + '&sh=' + canvasData.naturalHeight + '&w=' + ww + '&h=' + hh + '&permalink=true&stretch=1';
     }
@@ -819,20 +896,100 @@ export default {
         hh = fileHeight;
       }
       // only width & height of interest for these two
-      downloadURL += `&w=${ww}&h=${hh}&permalink=true&stretch=1`;
+      urlParams += `&w=${ww}&h=${hh}&permalink=true&stretch=1`;
     }
 
     // Only if using any of the default formats - i.e. "Image size"
     if (selectedFormatValue < 0) {
       // defaults.imageDownloadFileType
       if (["jpg", "png", "webp"].includes(me.config?.defaults?.imageDownloadFileType?.toLowerCase() ?? "")) {
-        downloadURL += `&format=${me.config.defaults.imageDownloadFileType.toLowerCase()}`;
+        urlParams += `&format=${me.config.defaults.imageDownloadFileType.toLowerCase()}`;
       }
       // if using default "format" - use png/webp if file type is png/webp, else uses format file type
       else if (["png", "webp"].includes(me.file.type.extension)) {
-        downloadURL += `&format=${me.file.type.extension}`;
+        urlParams += `&format=${me.file.type.extension}`;
       }
     }
+
+    return {
+      selectedFormatValue: selectedFormatValue,
+      width: ww,
+      height: hh,
+      canvasData: canvasData,
+      cropperData: cropperData,
+      legacyUrlParams: urlParams
+    };
+  },
+
+  buildSuccessObject: function(me, sel, url, fileType) {
+    const safeCanvasWidth = sel.canvasData?.naturalWidth ?? me.file?.width ?? sel.width ?? null;
+    const safeCanvasHeight = sel.canvasData?.naturalHeight ?? me.file?.height ?? sel.height ?? null;
+    const cropX = sel.cropperData?.x ?? 0;
+    const cropY = sel.cropperData?.y ?? 0;
+    const cropW = sel.cropperData?.width ?? 0;
+    const cropH = sel.cropperData?.height ?? 0;
+    let successObject = {
+      id: me.file.id,
+      mediaId: me.file.mediaId,
+      folderId: me.selectedFolderId,
+      url: url,
+      name: me.file.name,
+      filename: me.filenameInput.value + '.' + fileType,
+      basetype: me.file.type.type,
+      filetype: fileType,
+      width: sel.width,
+      height: sel.height,
+      additionalInfo: me.file.additionalInfo,
+      customFields: me.file.customFields,
+      description: me.fileDescription.value,
+      photographer: me.file.photographer,
+      instructions: me.file.instructions,
+      keywords: me.file.keywords,
+      altText: me.altInput.value,
+      canvasWidth: safeCanvasWidth,
+      canvasHeight: safeCanvasHeight,
+      cropCoordinates: {
+        x1: cropX,
+        y1: cropY,
+        x2: cropX + cropW,
+        y2: cropY + cropH
+      },
+      cropWidth: cropW,
+      cropHeight: cropH,
+      isCropped: isCropped(cropX, cropY, cropW, cropH, safeCanvasWidth, safeCanvasHeight),
+      cropFormat: me.formatSelector.options[me.formatSelector.selectedIndex].dataset.id,
+      ...assetFields(me.file)
+    };
+    if(me.config.useNavigationLink === true && me.navigationLink.value.trim().length > 0) {
+      successObject.navigationLink = me.navigationLink.value.trim();
+      successObject.navigationLinkTarget = me.navigationLinkTarget.checked ? "_blank" : "_self";
+    }
+    return successObject;
+  },
+
+  // CDN flow: no downloads/{format} call. The resource is created with the original filename,
+  // the crop/size/format selection is appended to the CDN URL as transform parameters.
+  doCdnDownload: function(me) {
+    const _this = this;
+    const sel = this.getSelection(me);
+    const params = buildImageParams(me, sel);
+
+    publish(me, me.file, params).then(function(result) {
+      me.isDownloading = false;
+      const successObject = withCdn(_this.buildSuccessObject(me, sel, result.url, fileTypeFor(me, params)), result.cdn);
+      _this.showDoneButtonDone(me);
+      me.config.success(successObject);
+    }, function(err) {
+      me.isDownloading = false;
+      _this.resetDoneButton(me);
+      showCdnError(me, 'CDN_CREATE_FAILED', err);
+    });
+  },
+
+  doDownload: function (me, o) {
+    const _this = this;
+    const sel = this.getSelection(me);
+    const downloadURL = o[0].downloadURL + sel.legacyUrlParams;
 
     var xhr = new XMLHttpRequest();
     xhr.open('GET', downloadURL);
@@ -845,46 +1002,7 @@ export default {
 
             me.isDownloading = false;
             setTimeout(function () {
-              const safeCanvasWidth = canvasData?.naturalWidth ?? me.file?.width ?? ww ?? null;
-              const safeCanvasHeight = canvasData?.naturalHeight ?? me.file?.height ?? hh ?? null;
-              const cropX = cropperData?.x ?? 0;
-              const cropY = cropperData?.y ?? 0;
-              const cropW = cropperData?.width ?? 0;
-              const cropH = cropperData?.height ?? 0;
-              let successObject = {
-                id: me.file.id,
-                folderId: me.selectedFolderId,
-                url: o.url,
-                name: me.file.name,
-                filename: fileName + '.' + fileType,
-                basetype: me.file.type.type,
-                filetype: fileType,
-                width: ww,
-                height: hh,
-                additionalInfo: me.file.additionalInfo,
-                customFields: me.file.customFields,
-                description: me.fileDescription.value,
-                photographer: me.file.photographer,
-                instructions: me.file.instructions,
-                keywords: me.file.keywords,
-                altText: altText,
-                canvasWidth: safeCanvasWidth,
-                canvasHeight: safeCanvasHeight,
-                cropCoordinates: {
-                  x1: cropX,
-                  y1: cropY,
-                  x2: cropX + cropW,
-                  y2: cropY + cropH
-                },
-                cropWidth: cropW,
-                cropHeight: cropH,
-                cropFormat: me.formatSelector.options[me.formatSelector.selectedIndex].dataset.id
-              };
-              if(me.config.useNavigationLink === true && me.navigationLink.value.trim().length > 0) {
-                successObject.navigationLink = me.navigationLink.value.trim();
-                successObject.navigationLinkTarget = me.navigationLinkTarget.checked ? "_blank" : "_self";
-              }
-              me.config.success(successObject);
+              me.config.success(_this.buildSuccessObject(me, sel, o.url, fileType));
             }, 5);
           } catch (e) {
             me.isDownloading = false;
@@ -895,20 +1013,7 @@ export default {
           alert('ERR: doDownload, status: ' + xhr.status);
         }
 
-        // Show "all done" message to user
-        if(me.config.showDoneButtonWorkingFlow){
-          if (me.config.rootElement) {
-            var btn = me.config.rootElement.querySelector('#mf-btn-done');
-          } else {
-            var btn = document.getElementById('mf-btn-done');
-          }
-          btn.classList.add('working-done');
-          btn.classList.remove('working');
-          btn.innerHTML = `<div><svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" class="bi bi-check-circle-fill" viewBox="0 0 16 16">
-                          <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
-                          </svg></div><div>${me.lang.translate('FILE_VIEW_FETCHING_DATA_DONE')}</div>`;
-        }
-
+        _this.showDoneButtonDone(me);
       }
     };
     xhr.send(null);

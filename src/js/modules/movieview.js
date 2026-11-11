@@ -1,4 +1,5 @@
 /* Mediaflow File Selector */
+import { assetFields } from '../helpers/fileresult';
 export default {
   me:{},
   init: function(me, backClickCallback, embedMethod, startTime, autoPlay) {
@@ -275,7 +276,7 @@ export default {
   },
   getThemes: function() {
     try {
-      this.me.api.get('users/me?fields=activeModules&customerId', (data) => {
+      this.me.integrationApi.get('users/me?fields=activeModules&customerId', (data) => {
         if (data && data.length > 0 && data[0].activeModules && data[0].activeModules.includes('video_player_themes')) {
           
     
@@ -431,7 +432,8 @@ export default {
         embedCode: sEmebedCode, 
         autoPlay: me.autoPlay,
         startTime: me.useStartOffset === true ? me.startTime : 0, 
-        theme: me.pickedTheme
+        theme: me.pickedTheme,
+        ...assetFields(me.file)
       });
 
       // Show "all done" message to user

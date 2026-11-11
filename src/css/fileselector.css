@@ -154,6 +154,9 @@
   border-top-width: 1px;
   border-left: 1px solid var(--mf-fs-border);
   position: relative;
+  /* Contain child z-indexes (e.g. .mf-filesbox-sizeheader .mf-selected) so they
+     don't paint above the cropper/movie overlays that cover this area. */
+  isolation: isolate;
 }
 
 .mf_fileviewArea .mf-files-box .mf-header {
