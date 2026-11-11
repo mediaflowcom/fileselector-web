@@ -165,7 +165,7 @@ export default class FileSelector {
 				reject({ message: message, status: info?.status, body: info?.body });
 			});
 		});
-		console.log('CDN: users/me?fields=activeModules response', result);
+
 		if (!Array.isArray(result) || !result[0] || !Array.isArray(result[0].activeModules)) {
 			throw { message: 'ERR:GET,users/me,INVALID_RESPONSE', body: result };
 		}
