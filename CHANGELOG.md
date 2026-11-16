@@ -52,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to arrive as a still JPG: a cropped or resized rendering can't be a GIF). Their cropper shows only
   the filename and alt-text fields; `forceAltText` still applies. Predefined formats, `downloadFormat: 'fixed'`
   and cropping don't apply to GIFs. With CDN on, a GIF gets no transform parameters (it used to be forced to WebP).
+  The file object's `cropFormat` is `'0'` (the original) for GIFs.
 - The API service accepts `202`/`204` responses, reports network errors to the error
   callback and passes the status and error body as a second argument.
 

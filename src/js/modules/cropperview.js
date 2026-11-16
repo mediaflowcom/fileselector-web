@@ -966,7 +966,7 @@ export default {
       cropWidth: cropW,
       cropHeight: cropH,
       isCropped: isCropped(cropX, cropY, cropW, cropH, safeCanvasWidth, safeCanvasHeight),
-      cropFormat: me.formatSelector.options[me.formatSelector.selectedIndex].dataset.id,
+      cropFormat: isGif(me.file) ? '0' : me.formatSelector.options[me.formatSelector.selectedIndex].dataset.id,
       ...assetFields(me.file)
     };
     if(me.config.useNavigationLink === true && me.navigationLink.value.trim().length > 0) {
