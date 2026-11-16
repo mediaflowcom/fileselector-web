@@ -1,7 +1,7 @@
 /* Mediaflow File Selector */
 
 import Cropper from 'cropperjs';
-import { getCdnMode, isCdnSupported, isDownloadDenied, showCdnError, buildImageParams, fileTypeFor, publish } from '../services/cdn';
+import { getCdnMode, isCdnSupported, isDownloadDenied, isGif, showCdnError, buildImageParams, fileTypeFor, publish } from '../services/cdn';
 import { assetFields, withCdn, isCropped } from '../helpers/fileresult';
 
 export default {
@@ -114,6 +114,7 @@ export default {
     if(me.config.allowSelectFormat === false){
       trn.style.display='none';
     }
+    trn.hidden = isGif(me.file);
     var tdn = document.createElement('td');
     tdn.innerText = me.lang.translate('CROPPER_IMAGESIZE');
     tdn.className = 'mf-hdr';
@@ -178,6 +179,7 @@ export default {
     me.widthInputRow.appendChild(tdn);
     if(me.formats.length > 0)
       me.widthInputRow.style.display = 'none';
+    me.widthInputRow.hidden = trn.hidden;
     tbl.appendChild(me.widthInputRow);
     // #endregion
     
@@ -202,6 +204,7 @@ export default {
     me.heightInputRow.appendChild(tdn);
     if(me.formats.length > 0)
       me.heightInputRow.style.display = 'none';
+    me.heightInputRow.hidden = trn.hidden;
     tbl.appendChild(me.heightInputRow);
     // #endregion
 
@@ -433,6 +436,8 @@ export default {
     if(disableCropper !== true){
       me.cropper = new Cropper(img, {
         aspectRatio: aspectRatio,
+        autoCrop: !isGif(me.file),
+        dragMode: isGif(me.file) ? 'none' : 'crop',
         autoCropArea: 1,
         zoomable: false,
         movable: false,
@@ -746,6 +751,9 @@ export default {
     if (me.selectedFormat > 0) {
       format = me.selectedFormat;
     }
+    if (isGif(me.file)) {
+      format = 0;
+    }
     
     me.api.get('file/' + me.file.id + '/downloads/'+format, function(o){
       _this.doDownload(me, o);
@@ -822,6 +830,10 @@ export default {
     const selectedFormatValue = parseInt(me.formatSelector[me.formatSelector.selectedIndex].value, 10);
     const widthInput = me.widthInput.value;
     const heightInput = me.heightInput.value;
+
+    if (isGif(me.file)) {
+      return { selectedFormatValue: selectedFormatValue, width: me.file.width, height: me.file.height, legacyUrlParams: '&permalink=true' };
+    }
 
     if (selectedFormatValue >= -3) { // defaults + crop formats (from MF)
       // in the case where "downloadFormat": "original" - w/h is set to -1 => use original size
@@ -969,7 +981,7 @@ export default {
   doCdnDownload: function(me) {
     const _this = this;
     const sel = this.getSelection(me);
-    const params = buildImageParams(me, sel);
+    const params = isGif(me.file) ? {} : buildImageParams(me, sel);
 
     publish(me, me.file, params).then(function(result) {
       me.isDownloading = false;

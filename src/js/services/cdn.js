@@ -47,6 +47,11 @@ export function isVideo(file) {
   return file?.type?.type === 'video';
 }
 
+// Renderings (crop/resize) cannot output GIF, so a GIF must be delivered as the original to keep its animation.
+export function isGif(file) {
+  return (file?.type?.extension ?? '').toLowerCase() === 'gif';
+}
+
 /**
  * Whether the CDN can publish this file.
  * Images (101-199), PDF (201), SVG (230) and audio (300-399). Video is handled outside the CDN.
@@ -189,12 +194,6 @@ export function buildImageParams(me, sel) {
   const dft = (me.config?.defaults?.imageDownloadFileType ?? '').toLowerCase();
   if (v < 0 && ['jpg', 'png', 'webp'].includes(dft)) {
     p.f = dft === 'jpg' ? 'jpeg' : dft;
-  }
-
-  // CDN 1.0.0: transformed GIF requests need an explicit format (otherwise 500 for some clients)
-  const ext = (me.file?.type?.extension ?? '').toLowerCase();
-  if (ext === 'gif' && !p.f && Object.keys(p).length > 0) {
-    p.f = 'webp';
   }
   return p;
 }
