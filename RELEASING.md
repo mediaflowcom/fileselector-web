@@ -36,15 +36,17 @@ Check that `dist/fileselector.min.js`, `dist/css/fileselector.min.css` and `dist
 exist and have today's timestamp.
 
 ## 3. Back up the current production files
-As `staticuser`, **copy** (don't move) each live file to `<file>_backupYYMMDD`. Copying means
+As `staticuser`, **copy** (don't move) each live file to `<file>_backupYYYYMMDD`. Copying means
 production never returns a 404 during the release.
 ```bash
 ssh staticuser@178.174.209.211
-cd /ssddata/static/js  && cp -p fileselector.min.js fileselector.min.js_backup$(date +%y%m%d)
-cd /ssddata/static/css && cp -p fileselector.min.css fileselector.min.css_backup$(date +%y%m%d) \
-                       && cp -p fileselector.css fileselector.css_backup$(date +%y%m%d)
+d=$(date +%Y%m%d)
+for f in /ssddata/static/js/fileselector.min.js /ssddata/static/css/fileselector.min.css /ssddata/static/css/fileselector.css; do
+  if [ -e "${f}_backup$d" ]; then echo "kept ${f}_backup$d"; else cp -p "$f" "${f}_backup$d"; fi
+done
+exit
 ```
-If a backup with today's date already exists, **keep it**. It holds the release from before today's
+The loop **keeps** any backup that already has today's date. It holds the release from before today's
 first upload, so overwriting it would lose that.
 
 ## 4. Upload — `make upload`
@@ -61,22 +63,26 @@ nginx serves the `.gz` file whenever one exists. If you skip this step, browsers
 ssh -t adminuser@178.174.209.211
 cd /ssddata/static/js  && sudo gzip -kf --best fileselector.min.js
 cd /ssddata/static/css && sudo gzip -kf --best fileselector.min.css fileselector.css
+exit
 ```
 Use `-f`: `-k` alone refuses to overwrite the previous release's `.gz`, so the stale file stays in place.
 
 ## 6. Verify — `make verify`
 Download each public URL twice, once plain and once gzipped, and compare it byte for byte with `dist/`:
 ```bash
-curl -s https://mfstatic.com/js/fileselector.min.js | cmp - dist/fileselector.min.js
-curl -s --compressed -H 'Accept-Encoding: gzip' https://mfstatic.com/js/fileselector.min.js | cmp - dist/fileselector.min.js
+served=$(mktemp)
+curl -fsS -o "$served" https://mfstatic.com/js/fileselector.min.js && cmp "$served" dist/fileselector.min.js
+curl -fsS --compressed -H 'Accept-Encoding: gzip' -o "$served" https://mfstatic.com/js/fileselector.min.js && cmp "$served" dist/fileselector.min.js
 ```
 Do the same for both CSS files. A mismatch in the first few minutes is normal, because the files sync
 to the second static server (`178.174.209.212`). Wait and run it again. Then open an integration that
 uses the Fileselector, hard-reload it, and check that `FS_VERSION` shows the new version.
 
-## Rollback — `make revert` (or `make revert BACKUP=YYMMDD`)
-As `staticuser`, copy each `<file>_backupYYMMDD` back over `<file>`. Then **repeat step 5**, otherwise
-the gzipped copy still serves the broken release. Finish with step 6.
+## Rollback — `make revert` (or `make revert BACKUP=YYYYMMDD`)
+As `staticuser`, copy each `<file>_backupYYYYMMDD` back over `<file>`. Then **repeat step 5**, otherwise
+the gzipped copy still serves the broken release. Finish with step 6, but against the release you
+restored: `dist/` still holds the broken one, so check out the restored release's tag and run `make build`
+first. In the integration, `FS_VERSION` should then show that older version.
 
 ## Shortcut
 `make publish` asks for confirmation, then runs steps 2–6 in order. Put connection overrides
