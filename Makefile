@@ -89,7 +89,7 @@ verify:
 		case $$file in js/*) built=dist/$${file#js/} ;; *) built=dist/$$file ;; esac; \
 		for encoding in identity gzip; do \
 			if curl -fsS --compressed -H "Accept-Encoding: $$encoding" -D "$$headers" -o "$$served" "$(PUBLIC_URL)/$$file" && cmp -s "$$served" "$$built" \
-				&& [ "$$(grep -i '^content-encoding:' "$$headers" | sed 's/^[^:]*: *//' | tr -d '\r' | tr A-Z a-z | grep . || echo identity)" = $$encoding ]; then \
+				&& [ "$$(grep -i '^content-encoding:' "$$headers" | sed 's/^[^:]*:[[:space:]]*//; s/[[:space:]]*$$//' | tr A-Z a-z | grep . || echo identity)" = $$encoding ]; then \
 				echo "ok       $$file ($$encoding)"; \
 			else \
 				echo "MISMATCH $$file ($$encoding)"; status=1; \
