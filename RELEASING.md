@@ -42,12 +42,15 @@ production never returns a 404 during the release.
 ssh staticuser@178.174.209.211
 d=$(date +%Y%m%d)
 for f in /ssddata/static/js/fileselector.min.js /ssddata/static/css/fileselector.min.css /ssddata/static/css/fileselector.css; do
-  if [ -e "${f}_backup$d" ]; then echo "kept ${f}_backup$d"; else cp -p "$f" "${f}_backup$d"; fi
+  if [ -e "${f}_backup$d" ]; then echo "kept ${f}_backup$d"
+  elif cp -p "$f" "$f.backup-partial" && mv "$f.backup-partial" "${f}_backup$d"; then echo "backed up ${f}_backup$d"
+  else rm -f "$f.backup-partial"; echo "BACKUP FAILED: $f"; break; fi
 done
 exit
 ```
 The loop **keeps** any backup that already has today's date. It holds the release from before today's
-first upload, so overwriting it would lose that.
+first upload, so overwriting it would lose that. If it prints `BACKUP FAILED`, **stop**: don't upload
+until a rerun backs up every file.
 
 ## 4. Upload — `make upload`
 Use `scp`, or an SFTP client logged in as `staticuser`:
@@ -71,10 +74,11 @@ Use `-f`: `-k` alone refuses to overwrite the previous release's `.gz`, so the s
 Download each public URL twice, once plain and once gzipped, and compare it byte for byte with `dist/`:
 ```bash
 served=$(mktemp)
-curl -fsS -o "$served" https://mfstatic.com/js/fileselector.min.js && cmp "$served" dist/fileselector.min.js
-curl -fsS --compressed -H 'Accept-Encoding: gzip' -o "$served" https://mfstatic.com/js/fileselector.min.js && cmp "$served" dist/fileselector.min.js
+curl -fsS -o "$served" https://mfstatic.com/js/fileselector.min.js && cmp "$served" dist/fileselector.min.js && echo ok
+curl -fsS --compressed -H 'Accept-Encoding: gzip' -D - -o "$served" https://mfstatic.com/js/fileselector.min.js \
+  | grep -qi '^content-encoding: *gzip' && cmp "$served" dist/fileselector.min.js && echo ok
 ```
-Do the same for both CSS files. A mismatch in the first few minutes is normal, because the files sync
+Each command prints `ok`; anything else is a failure. Do the same for both CSS files. A mismatch in the first few minutes is normal, because the files sync
 to the second static server (`178.174.209.212`). Wait and run it again. Then open an integration that
 uses the Fileselector, hard-reload it, and check that `FS_VERSION` shows the new version.
 
@@ -85,5 +89,6 @@ restored: `dist/` still holds the broken one, so check out the restored release'
 first. In the integration, `FS_VERSION` should then show that older version.
 
 ## Shortcut
-`make publish` asks for confirmation, then runs steps 2–6 in order. Put connection overrides
+`make publish` asks for confirmation, then runs steps 2–6 in order, except step 6's integration check:
+open an integration and check `FS_VERSION` yourself once it succeeds. Put connection overrides
 (`STATIC_HOST`, `UPLOAD_USER`, `ADMIN_USER`, …) in a local `.env`, which git ignores. Step 1 is still manual.
