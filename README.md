@@ -66,6 +66,9 @@ npm run serve
 npm run build
 ```
 
+### Publishing to production
+See [RELEASING.md](RELEASING.md).
+
 ## Authentication
 
 | `auth` | Use for | Notes |
