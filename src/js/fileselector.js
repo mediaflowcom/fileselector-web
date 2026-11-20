@@ -268,6 +268,7 @@ export default class FileSelector {
 		if(me.config.selectedFile && typeof me.config.selectedFile === 'object' && me.config.selectedFile.basetype === 'video') {
 		   var autoPlay = me.config.selectedFile.autoPlay === undefined ? false : me.config.selectedFile.autoPlay;
 		   var startTime =  me.config.selectedFile.startTime === undefined ? false : me.config.selectedFile.startTime;		   
+		   var loop = me.config.selectedFile.loop === true;
 		   var embedMethod = me.config.selectedFile.embedMethod;
 		   if(autoPlay === undefined) {
 			   if(me.config.allowJSVideo) 
@@ -275,7 +276,7 @@ export default class FileSelector {
 			   else
 			     embedMethod = 'iframe';
 		   }
-		   movieview.init(me, me.btnBackClick, embedMethod,startTime, autoPlay); 
+		   movieview.init(me, me.btnBackClick, embedMethod,startTime, autoPlay, loop); 
 		}
 		else {
 		   var method = 'javascript';
@@ -283,7 +284,7 @@ export default class FileSelector {
 		     method = 'iframe';
 		   if(me.config.allowIframeVideo === false)
 		     method = 'javascript';
-		   movieview.init(me, me.btnBackClick,method,0,false);
+		   movieview.init(me, me.btnBackClick,method,0,false,false);
 		}
 		return me;
 	}		

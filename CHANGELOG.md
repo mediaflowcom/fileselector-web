@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # 2.7.0 Unreleased
 
 ### Added
+- Loop checkbox in the video settings: the embed code loops the video. `loop` is returned in the
+  success callback and read back from `selectedFile.loop`.
 - `setFilename` setting (default `true`): `false` hides the filename field in the cropper.
   The success callback's `filename` still uses the file's own name.
 - `getAccessToken` and `getIntegrationAccessToken` settings (`auth: 'accesstoken'`): async callbacks

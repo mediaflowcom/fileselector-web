@@ -2,13 +2,14 @@
 import { assetFields } from '../helpers/fileresult';
 export default {
   me:{},
-  init: function(me, backClickCallback, embedMethod, startTime, autoPlay) {
+  init: function(me, backClickCallback, embedMethod, startTime, autoPlay, loop) {
     this.me = me;
     me.isDownloading = false;
     me.movieviewVisible = false;
     me.movieview = this;
     me.startTime = startTime;
     me.autoPlay = autoPlay;
+    me.loop = loop === true;
     me.embedMethod = embedMethod;
 
 
@@ -234,6 +235,25 @@ export default {
       cb.id = 'mf_autostart';
       label.appendChild(cb);
       div4.appendChild(label);
+
+      label = document.createElement('label');
+      cb = document.createElement('input');
+
+      label.setAttribute('for','mf_loop');
+      label.innerText = me.lang.translate('LOOP_PLAYBACK');
+      label.style.color='white';
+
+      cb.setAttribute('type','checkbox');
+      cb.setAttribute('name','mf_loop');
+      cb.setAttribute('value','true');
+      cb.style.float = 'left';
+      if(me.loop)
+          cb.setAttribute('checked','');
+
+      cb.addEventListener('change', function(e) { me.loop = e.target.checked;});
+      cb.id = 'mf_loop';
+      label.appendChild(cb);
+      div4.appendChild(label);
     }
 
     /* insert button  */
@@ -431,6 +451,7 @@ export default {
         embedMethod: me.embedMethod, 
         embedCode: sEmebedCode, 
         autoPlay: me.autoPlay,
+        loop: me.loop,
         startTime: me.useStartOffset === true ? me.startTime : 0, 
         theme: me.pickedTheme,
         ...assetFields(me.file)
@@ -516,6 +537,10 @@ export default {
         options.autoPlay = false;
       }
 
+      if (me.loop === true) {
+        options.loop = true;
+      }
+
       // iframe options
       if(me.embedMethod === 'iframe') {
         iframeOptions = this.mapIframeOptions(iframeOptions, options);
@@ -552,6 +577,10 @@ export default {
     
     if(options.muted) {
       iframeOptions += `&muted=true`;
+    }
+
+    if(options.loop) {
+      iframeOptions += `&loop=true`;
     }
     
     if(options?.startAt > 0 ?? false) {
